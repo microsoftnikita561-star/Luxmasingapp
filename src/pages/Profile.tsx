@@ -72,7 +72,7 @@ export default function ProfilePage() {
       </div>
       <div className="card stack">
         <h2>Данные</h2>
-        <p className="small muted">Все данные хранятся локально. Сделайте резервную копию перед сменой устройства.</p>
+        <p className="small muted">Все данные хранятся на этом устройстве. Сделайте резервную копию перед сменой телефона. Ключ ИИ в файл копии не попадает — его нужно будет ввести заново.</p>
         <div className="row">
           <button className="btn ghost" onClick={download}><Icon name="download" />Экспорт</button>
           <button className="btn ghost" onClick={() => file.current?.click()}><Icon name="import" />Импорт</button>

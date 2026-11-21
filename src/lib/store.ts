@@ -129,10 +129,12 @@ export function resetAll() {
   listeners.forEach((l) => l())
 }
 
-export function exportData(): string { return JSON.stringify(state) }
+/** Резервная копия. Ключ OpenRouter в файл не попадает — файл можно передавать без риска. */
+export function exportData(): string { return JSON.stringify({ ...state, settings: { ...state.settings, openrouterKey: '' } }) }
 export function importData(json: string) {
   const s = JSON.parse(json)
-  setState(() => ({ ...initial, ...s }))
+  // ключ из файла не берём: оставляем тот, что уже введён на этом устройстве
+  setState((cur) => ({ ...initial, ...s, profile: { ...initial.profile, ...s.profile }, style: { ...initial.style, ...s.style }, settings: { ...initial.settings, ...s.settings, openrouterKey: cur.settings.openrouterKey } }))
 }
 
 // ——— XP и уровни ———
