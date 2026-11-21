@@ -41,13 +41,22 @@ export default function ProfilePage() {
           {models ? (
             <select value={settings.model} onChange={(e) => setState((s) => ({ ...s, settings: { ...s.settings, model: e.target.value } }))}>
               {!models.some((m) => m.id === settings.model) && <option value={settings.model}>{settings.model}</option>}
-              {models.map((m) => <option key={m.id} value={m.id}>{m.name} — {m.pricePerM ? `$${m.pricePerM.toFixed(2)} за 1 млн токенов` : 'бесплатно'}</option>)}
+              {models.filter((m) => !m.makesImages).map((m) => <option key={m.id} value={m.id}>{m.name} — {m.pricePerM ? `$${m.pricePerM.toFixed(2)} за 1 млн токенов` : 'бесплатно'}</option>)}
             </select>
           ) : (
             <div className="chips">
               {MODEL_PRESETS.map((m) => (
                 <button key={m.id} className={`chip ${settings.model === m.id ? 'on' : ''}`} onClick={() => setState((s) => ({ ...s, settings: { ...s.settings, model: m.id } }))}>{m.label}</button>
               ))}
+            </div>
+          )}
+          {models && (
+            <div className="mt">
+              <label>Модель для картинок (примерка причёски, образы одежды)</label>
+              <select value={settings.imageModel} onChange={(e) => setState((s) => ({ ...s, settings: { ...s.settings, imageModel: e.target.value } }))}>
+                {!models.some((m) => m.id === settings.imageModel) && <option value={settings.imageModel}>{settings.imageModel}</option>}
+                {models.filter((m) => m.makesImages).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
             </div>
           )}
           <p className="tiny muted" style={{ marginTop: 6 }}>{models ? `Список загружен из каталога OpenRouter: ${models.length} моделей.` : 'Каталог OpenRouter пока не загрузился — показан короткий список.'}</p>

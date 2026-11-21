@@ -75,6 +75,7 @@ export default function Analyze() {
                 </tbody>
               </table>
             </div>
+            <a className="card" href="#style"><div className="row between"><div><h3>Подобрать причёску и примерить</h3><div className="small muted">Из стрижек, которые носят сейчас, — на этом фото</div></div><Icon name="right" /></div></a>
             <a className="card" href="#skin"><div className="row between"><div><h3>Проверить кожу на этом фото</h3><div className="small muted">Детектор воспалений и подбор средств</div></div><Icon name="right" /></div></a>
           </div>
 

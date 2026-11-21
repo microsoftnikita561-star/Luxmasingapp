@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { chat, COACH_SYSTEM } from '../lib/openrouter'
 import { setState, useStore, type ChatMsg } from '../lib/store'
 import { Icon } from '../components/Icon'
+import { HAIRCUTS, HAIR_TYPES, OUTFITS } from '../data/styles'
 
 const QUICK = [
   'Составь мне план на 12 недель по моему анализу',
@@ -33,11 +34,13 @@ export default function Coach() {
   const [err, setErr] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const style = useStore((s) => s.style)
   const skinLog = useStore((s) => s.skin)
   const lastSkin = skinLog[skinLog.length - 1]
   const last = progress[progress.length - 1]?.analysis
   const context = `Профиль: пол ${profile.sex === 'male' ? 'мужской' : 'женский'}, возраст ${profile.age}, кожа: ${profile.skin}${profile.acne ? ', есть акне' : ''}${profile.heightCm ? `, рост ${profile.heightCm} см` : ''}${profile.weightKg ? `, вес ${profile.weightKg} кг` : ''}. Цели: ${profile.goals.join(', ') || 'не указаны'}.` +
     (last ? `\nПоследний геометрический анализ лица: гармония ${last.harmony}/100, симметрия ${last.symmetry}, форма лица «${last.shape.name}». Метрики: ${last.metrics.map((m) => `${m.name} ${m.display} (норма ${m.idealDisplay}, балл ${m.score})`).join('; ')}.` : '\nАнализ лица ещё не делался.') +
+    `\nВолосы: ${HAIR_TYPES[style.hairType].toLowerCase()}.` + (style.myHair ? ` Выбранная причёска: ${HAIRCUTS.find((h) => h.id === style.myHair)?.name}.` : '') + (style.myOutfit ? ` Выбранный стиль одежды: ${OUTFITS.find((o) => o.id === style.myOutfit)?.name}.` : '') +
     (lastSkin ? `\nДетектор кожи: воспалений ${lastSkin.inflamed}, следов ${lastSkin.marks}, степень ${lastSkin.severity}.` : '')
 
   async function send(t = text) {

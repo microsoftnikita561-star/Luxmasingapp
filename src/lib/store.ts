@@ -27,6 +27,18 @@ export interface BodyEntry { date: number; weightKg?: number; waistCm?: number; 
 
 export interface SkinEntry { date: number; severity: string; inflamed: number; marks: number; redness: number; evenness: number }
 
+export interface StylePrefs {
+  hairType: 'straight' | 'wavy' | 'curly' | 'coily'
+  hairLen: 'short' | 'medium' | 'long'
+  minutes: number
+  strict: boolean
+  shape: 'oval' | 'round' | 'square' | 'oblong' | 'heart' | 'diamond' | null
+  vibe: 'calm' | 'bold' | 'sport' | 'dark' | 'classic'
+  budget: 'low' | 'mid' | 'high'
+  myHair: string | null
+  myOutfit: string | null
+}
+
 export interface ChatMsg { role: 'user' | 'assistant'; content: string; image?: string }
 
 export interface AppState {
@@ -39,9 +51,10 @@ export interface AppState {
   progress: ProgressEntry[]
   body: BodyEntry[]
   skin: SkinEntry[]
+  style: StylePrefs
   drills: Record<string, number> // лучший результат упражнений тренажёра
   chat: ChatMsg[]
-  settings: { openrouterKey: string; model: string; theme: 'auto' | 'light' | 'dark' }
+  settings: { openrouterKey: string; model: string; imageModel: string; theme: 'auto' | 'light' | 'dark' }
 }
 
 const KEY = 'luxmasing-state-v1'
@@ -55,9 +68,10 @@ const initial: AppState = {
   progress: [],
   body: [],
   skin: [],
+  style: { hairType: 'straight', hairLen: 'medium', minutes: 3, strict: false, shape: null, vibe: 'calm', budget: 'low', myHair: null, myOutfit: null },
   drills: {},
   chat: [],
-  settings: { openrouterKey: '', model: '~google/gemini-flash-latest', theme: 'auto' },
+  settings: { openrouterKey: '', model: '~google/gemini-flash-latest', imageModel: 'google/gemini-3.1-flash-image', theme: 'auto' },
 }
 
 function load(): AppState {
@@ -67,7 +81,7 @@ function load(): AppState {
     const s = JSON.parse(raw)
     const settings = { ...initial.settings, ...s.settings }
     if (settings.model === 'google/gemini-2.5-flash') settings.model = initial.settings.model // старой модели больше нет в каталоге
-    return { ...initial, ...s, profile: { ...initial.profile, ...s.profile }, settings }
+    return { ...initial, ...s, profile: { ...initial.profile, ...s.profile }, style: { ...initial.style, ...s.style }, settings }
   } catch {
     return initial
   }

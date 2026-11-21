@@ -13,11 +13,13 @@ import ProfilePage from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 import Shared from './pages/Shared'
 import Battle from './pages/Battle'
+import Style from './pages/Style'
 
 const NAV = [
   { id: 'home', name: 'Сегодня' },
   { id: 'analyze', name: 'Анализ лица' },
   { id: 'skin', name: 'Кожа' },
+  { id: 'style', name: 'Стиль' },
   { id: 'program', name: 'Программа' },
   { id: 'trainer', name: 'Тренировки' },
   { id: 'academy', name: 'Академия' },
@@ -44,6 +46,7 @@ export default function App() {
   switch (page) {
     case 'analyze': view = <Analyze />; break
     case 'skin': view = <Skin />; break
+    case 'style': view = <Style param={param} />; break
     case 'program': view = <Program />; break
     case 'trainer': view = <Trainer param={param} />; break
     case 'academy': view = <Academy lessonId={param} />; break
