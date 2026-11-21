@@ -5,6 +5,8 @@ import { levelInfo, streak, today, useStore, LEVELS } from '../lib/store'
 import { Bar } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { TaskRow } from './Program'
+import { buildFocus } from '../lib/focus'
+import { getState } from '../lib/store'
 
 export default function Home() {
   const profile = useStore((x) => x.profile)
@@ -22,6 +24,7 @@ export default function Home() {
   const last = progress[progress.length - 1]
   const upcoming = tasks.filter((t) => !doneToday.includes(t.id)).slice(0, 5)
   const drill = DRILLS[new Date().getDate() % DRILLS.length]
+  const focus = buildFocus(getState())
   const date = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
@@ -49,6 +52,19 @@ export default function Home() {
         <div className="card"><div className="label">Воспаления</div><div className="stat">{skin.length ? skin[skin.length - 1].inflamed : '—'}</div></div>
       </div>
 
+      {focus.length > 0 && (
+        <div className="card">
+          <div className="kicker">Ваш фокус сейчас</div>
+          {focus.map((f, i) => (
+            <a key={f.id} href={f.href} className="task" style={{ textDecoration: 'none' }}>
+              <span className="num muted">{String(i + 1).padStart(2, '0')}</span>
+              <div style={{ flex: 1 }}><div className="ttl">{f.title}</div><div className="small muted">{f.why}</div></div>
+              <span className="small" style={{ whiteSpace: 'nowrap', textDecoration: 'underline' }}>{f.action}</span>
+            </a>
+          ))}
+        </div>
+      )}
+
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div className="card">
           <div className="row between"><div className="kicker" style={{ margin: 0 }}>Дальше по плану</div><a href="#program" className="small muted">Вся программа</a></div>
@@ -58,11 +74,10 @@ export default function Home() {
           <div style={{ marginTop: 10 }}><Bar value={tasks.length ? (nDone / tasks.length) * 100 : 0} /></div>
         </div>
         <div className="stack">
-          {!last && <Tile href="#analyze" kicker="Первый шаг" title="Сделать анализ лица" text="478 точек, 14 пропорций, форма лица и приоритеты." />}
-          {!skin.length && <Tile href="#skin" kicker="Кожа" title="Проверить кожу" text="Детектор воспалений и схема ухода под возраст." />}
           <Tile href={`#trainer/face/${drill.id}`} kicker="Упражнение дня" title={drill.name} text={drill.goal} />
           {nextLesson && <Tile href={`#academy/${nextLesson.id}`} kicker={`Урок · ${nextLesson.minutes} мин`} title={nextLesson.title} />}
           <Tile href="#trainer/posture" kicker="8 минут" title="Осанка и шея" text="Шесть упражнений с фото каждого движения." />
+          <Tile href="#battle" kicker="Битва" title="Сравниться с другом или с собой" text="По раундам, с честными правилами: искажённые фото не засчитываются." />
         </div>
       </div>
     </div>

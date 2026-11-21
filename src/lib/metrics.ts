@@ -21,6 +21,7 @@ export interface Metric {
   modifiable: Modifiability
   levers: string[]
   lines: [number, number][] // пары точек для визуализации
+  unreliable?: string // причина, по которой метрика не засчитана на этом фото
 }
 
 export interface FaceShape {
@@ -35,6 +36,7 @@ export interface Analysis {
   date: number
   sex: Sex
   harmony: number
+  confidence?: number // доля измерений (по весу), которым можно доверять на этом фото, 0..100
   symmetry: number
   metrics: Metric[]
   shape: FaceShape
@@ -150,6 +152,7 @@ export function analyze(
   h: number,
   sex: Sex,
   pose: { yaw: number; pitch: number; roll: number } | null,
+  bs: Record<string, number> = {},
 ): Analysis {
   const p = toAlignedPoints(lms, w, h)
   const P = (i: number) => p[i]
@@ -360,18 +363,39 @@ export function analyze(
   }
   metrics.unshift(symMetric)
 
-  const totalW = metrics.reduce((s, m) => s + m.weight, 0)
-  const harmony = Math.round(metrics.reduce((s, m) => s + m.score * m.weight, 0) / totalW)
-
+  // Честность замера: метрики, искажённые мимикой или поворотом головы, не засчитываются
+  const avg2 = (x: string, y: string) => ((bs[x] ?? 0) + (bs[y] ?? 0)) / 2
+  const flag = (ids: string[], why: string) => { for (const m of metrics) if (ids.includes(m.id) && !m.unreliable) m.unreliable = why }
   const warnings: string[] = []
-  if (pose) {
-    if (Math.abs(pose.yaw) > 8) warnings.push(`Голова повёрнута на ${Math.abs(pose.yaw).toFixed(0)}° — для точного анализа смотрите прямо в камеру.`)
-    if (Math.abs(pose.pitch) > 12) warnings.push(`Голова наклонена вверх/вниз на ${Math.abs(pose.pitch).toFixed(0)}° — держите камеру на уровне глаз.`)
+  const mouthOpen = d(P(L.stomionU), P(L.stomionL)) / mouthW > 0.12 || (bs.jawOpen ?? 0) > 0.2
+  if (avg2('mouthSmileLeft', 'mouthSmileRight') > 0.35 || mouthOpen) {
+    flag(['thirds', 'chin', 'mouth', 'lips', 'nose', 'fwhr', 'midface', 'eyeopen'], 'улыбка или приоткрытый рот')
+    warnings.push('На фото улыбка или приоткрытый рот: метрики рта, носа и нижней трети не засчитаны. Переснимите с нейтральным лицом.')
   }
-  if (eyeOpen < 0.15) warnings.push('Глаза почти закрыты — метрики глаз неточны.')
-  if (d(P(L.stomionU), P(L.stomionL)) / mouthW > 0.12) warnings.push('Рот приоткрыт — метрики нижней трети неточны. Сомкните губы.')
+  if ((bs.browInnerUp ?? 0) > 0.4 || avg2('browOuterUpLeft', 'browOuterUpRight') > 0.4) {
+    flag(['brow', 'eyeopen'], 'подняты брови')
+    warnings.push('Брови подняты: метрики бровей и раскрытия глаз не засчитаны.')
+  }
+  if (avg2('eyeBlinkLeft', 'eyeBlinkRight') > 0.5 || eyeOpen < 0.15) {
+    flag(['eyeopen', 'canthal'], 'глаза прикрыты')
+    warnings.push('Глаза прикрыты: метрики глаз не засчитаны.')
+  }
+  if (pose && Math.abs(pose.yaw) > 8) {
+    flag(['symmetry', 'esr', 'jaw', 'fwhr', 'fifths', 'nose'], 'голова повёрнута')
+    warnings.push(`Голова повёрнута на ${Math.abs(pose.yaw).toFixed(0)}°: симметрия и ширины не засчитаны. Смотрите прямо в камеру.`)
+  }
+  if (pose && Math.abs(pose.pitch) > 12) {
+    flag(['thirds', 'chin', 'midface', 'fwhr', 'brow'], 'голова наклонена')
+    warnings.push(`Голова наклонена на ${Math.abs(pose.pitch).toFixed(0)}°: вертикальные пропорции не засчитаны. Держите камеру на уровне глаз.`)
+  }
 
-  return { date: Date.now(), sex, harmony, symmetry: sym, metrics, shape: faceShape(faceLen, jawCheek, foreheadW, d(P(L.chinR), P(L.chinL)) / bizyg), warnings, pose }
+  const totalW = metrics.reduce((s, m) => s + m.weight, 0)
+  const ok = metrics.filter((m) => !m.unreliable)
+  const okW = ok.reduce((s, m) => s + m.weight, 0)
+  const harmony = okW ? Math.round(ok.reduce((s, m) => s + m.score * m.weight, 0) / okW) : 0
+  const confidence = Math.round((okW / totalW) * 100)
+
+  return { date: Date.now(), sex, harmony, confidence, symmetry: sym, metrics, shape: faceShape(faceLen, jawCheek, foreheadW, d(P(L.chinR), P(L.chinL)) / bizyg), warnings, pose }
 }
 
 export const SHAPES: Record<FaceShape['id'], FaceShape> = {

@@ -1,12 +1,24 @@
 import type { ChatMsg } from './store'
 
 // OpenRouter — шлюз ко многим LLM. Ключ хранится только у вас в браузере.
+export const DEFAULT_MODEL = '~google/gemini-flash-latest'
+// Запасной список, если каталог OpenRouter не загрузился. Псевдонимы «~…-latest» сами переключаются на свежую модель.
 export const MODEL_PRESETS = [
-  { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash — быстрый, видит фото, дёшево' },
-  { id: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro — подробный разбор фото' },
-  { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5 — сильный коуч, видит фото' },
-  { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini — недорогой, видит фото' },
+  { id: '~google/gemini-flash-latest', label: 'Gemini Flash — быстрый и недорогой' },
+  { id: '~anthropic/claude-haiku-latest', label: 'Claude Haiku — самый дешёвый' },
+  { id: '~anthropic/claude-sonnet-latest', label: 'Claude Sonnet — подробные разборы' },
+  { id: '~google/gemini-pro-latest', label: 'Gemini Pro — максимум качества' },
 ]
+
+export interface ModelInfo { id: string; name: string; pricePerM: number }
+/** Актуальный каталог моделей, которые принимают изображения (ключ не нужен) */
+export async function listVisionModels(): Promise<ModelInfo[]> {
+  const res = await fetch('https://openrouter.ai/api/v1/models')
+  const json = await res.json()
+  return (json.data as { id: string; name: string; architecture?: { input_modalities?: string[] }; pricing?: { prompt?: string } }[])
+    .filter((m) => m.architecture?.input_modalities?.includes('image') && !m.id.endsWith(':batch'))
+    .map((m) => ({ id: m.id, name: m.name, pricePerM: Number(m.pricing?.prompt ?? 0) * 1e6 }))
+}
 
 export const COACH_SYSTEM = `Ты — «LuxCoach», доказательный коуч по улучшению внешности (looksmaxxing) внутри приложения LuxMasing. Отвечай по-русски, дружелюбно, конкретно и структурно (короткие списки, шаги, сроки).
 Принципы:
@@ -40,5 +52,7 @@ export async function chat(opts: { key: string; model: string; system: string; m
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json?.error?.message || `Ошибка OpenRouter: ${res.status}`)
-  return json?.choices?.[0]?.message?.content ?? '(пустой ответ)'
+  const choice = json?.choices?.[0]
+  if (!choice?.message?.content) throw new Error(choice?.finish_reason === 'length' ? 'Модель не уложилась в лимит ответа. Попробуйте ещё раз или выберите другую модель.' : 'Модель вернула пустой ответ. Попробуйте ещё раз.')
+  return choice.message.content
 }

@@ -1,4 +1,10 @@
-import type { Profile } from '../lib/store'
+import { getState, type Profile } from '../lib/store'
+
+// акне отмечено в профиле или найдено детектором на последнем замере
+const hasAcne = (p: Profile) => {
+  const last = getState().skin.at(-1)
+  return p.acne || (!!last && last.severity !== 'clear')
+}
 
 export type Category = 'skin' | 'body' | 'face' | 'hair' | 'sleep' | 'style' | 'mind'
 
@@ -30,9 +36,9 @@ export const TASKS: Task[] = [
   { id: 'am-cleanse', title: 'Умыться мягким гелем', desc: 'Тёплая вода, мягкий pH-нейтральный гель 30–60 сек. Не тереть полотенцем — промокнуть.', cat: 'skin', xp: 5, when: 'Утро', lesson: 'skin-basics' },
   { id: 'am-spf', title: 'SPF 30–50', desc: 'Главное антивозрастное средство. 2 пальца крема на лицо и шею, даже в пасмурную погоду. Обновлять каждые 2–3 ч на солнце.', cat: 'skin', xp: 10, when: 'Утро', lesson: 'skin-basics' },
   { id: 'pm-cleanse', title: 'Вечернее очищение', desc: 'Смыть SPF и себум. При стойком SPF/макияже — двойное очищение (гидрофильное масло → гель).', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-basics' },
-  { id: 'pm-active', title: 'Актив: ретиноид / кислоты', desc: 'Ретиноид (адапален 0.1% или ретинол) 3 вечера в неделю на сухую кожу, горошину на всё лицо. Начать с 2 раз в неделю. Не смешивать в один вечер с кислотами.', cat: 'skin', xp: 10, when: 'Вечер', days: [1, 3, 5], lesson: 'skin-actives', only: (p) => p.age >= 18 || p.acne },
+  { id: 'pm-active', title: 'Актив: ретиноид / кислоты', desc: 'Ретиноид (адапален 0.1% или ретинол) 3 вечера в неделю на сухую кожу, горошину на всё лицо. Начать с 2 раз в неделю. Не смешивать в один вечер с кислотами.', cat: 'skin', xp: 10, when: 'Вечер', days: [1, 3, 5], lesson: 'skin-actives', only: (p) => p.age >= 18 || hasAcne(p) },
   { id: 'pm-moist', title: 'Увлажняющий крем', desc: 'Крем с керамидами / глицерином / пантенолом. Наносить на слегка влажную кожу.', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-basics' },
-  { id: 'acne-bpo', title: 'Точечно бензоилпероксид', desc: 'BPO 2.5–5% на воспаления (короткий контакт 2–5 минут и смыть — меньше раздражения). Беречь ткань — отбеливает.', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-acne', only: (p) => p.acne },
+  { id: 'acne-bpo', title: 'Точечно бензоилпероксид', desc: 'BPO 2.5–5% на воспаления (короткий контакт 2–5 минут и смыть — меньше раздражения). Беречь ткань — отбеливает.', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-acne', only: hasAcne },
   { id: 'lips', title: 'Бальзам для губ', desc: 'Не облизывать губы. Днём — бальзам с SPF.', cat: 'skin', xp: 3, when: 'Любое время' },
   { id: 'pillow', title: 'Чистая наволочка', desc: 'Менять наволочку 2 раза в неделю — меньше высыпаний.', cat: 'skin', xp: 3, when: 'Любое время', days: [0, 3] },
 

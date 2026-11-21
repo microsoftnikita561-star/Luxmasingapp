@@ -12,6 +12,7 @@ import Coach from './pages/Coach'
 import ProfilePage from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 import Shared from './pages/Shared'
+import Battle from './pages/Battle'
 
 const NAV = [
   { id: 'home', name: 'Сегодня' },
@@ -21,6 +22,7 @@ const NAV = [
   { id: 'trainer', name: 'Тренировки' },
   { id: 'academy', name: 'Академия' },
   { id: 'progress', name: 'Прогресс' },
+  { id: 'battle', name: 'Битва' },
   { id: 'coach', name: 'Коуч' },
   { id: 'profile', name: 'Профиль' },
 ]
@@ -46,6 +48,7 @@ export default function App() {
     case 'trainer': view = <Trainer param={param} />; break
     case 'academy': view = <Academy lessonId={param} />; break
     case 'progress': view = <Progress />; break
+    case 'battle': view = <Battle param={param} />; break
     case 'coach': view = <Coach />; break
     case 'profile': view = <ProfilePage />; break
     default: view = <Home />

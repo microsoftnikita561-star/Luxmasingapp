@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { headPose } from '../lib/face'
+import { blendshapeMap, headPose } from '../lib/face'
 import { analyze, type Metric } from '../lib/metrics'
 import { addXp, setState, useStore } from '../lib/store'
 import { drawLines, drawMesh, faceThumb } from '../components/draw'
@@ -24,7 +24,7 @@ export default function Analyze() {
   const [savedAt, setSavedAt] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const a = useMemo(() => (cap ? analyze(cap.res.faceLandmarks[0], cap.img.width, cap.img.height, profile.sex, headPose(cap.res)) : null), [cap, profile.sex])
+  const a = useMemo(() => (cap ? analyze(cap.res.faceLandmarks[0], cap.img.width, cap.img.height, profile.sex, headPose(cap.res), blendshapeMap(cap.res)) : null), [cap, profile.sex])
 
   useEffect(() => {
     const c = canvasRef.current
@@ -46,9 +46,9 @@ export default function Analyze() {
   }
   const saved = !!cap && savedAt === cap.at
 
-  const priorities = a ? [...a.metrics].filter((m) => m.modifiable !== 'low' && m.score < 90)
+  const priorities = a ? [...a.metrics].filter((m) => !m.unreliable && m.modifiable !== 'low' && m.score < 90)
     .sort((x, y) => x.score * (x.modifiable === 'high' ? 0.8 : 1) - y.score * (y.modifiable === 'high' ? 0.8 : 1)).slice(0, 3) : []
-  const strengths = a ? a.metrics.filter((m) => m.score >= 95).slice(0, 5) : []
+  const strengths = a ? a.metrics.filter((m) => !m.unreliable && m.score >= 95).slice(0, 5) : []
 
   return (
     <div className="stack">
@@ -84,10 +84,10 @@ export default function Analyze() {
                 <Ring value={a.harmony} size={116} stroke={6} sub="из 100" />
                 <div style={{ flex: 1, minWidth: 190 }}>
                   <div className="kicker">Гармония пропорций</div>
-                  <p className="small muted">Доля пропорций, попадающих в эстетические диапазоны. Это геометрия одного фото, а не оценка внешности: кожа, волосы, процент жира и мимика влияют сильнее.</p>
+                  <p className="small muted">Насколько пропорции попадают в эстетические диапазоны. Считаются только измерения, которым на этом фото можно доверять. Это геометрия одного кадра, а не оценка внешности.</p>
                   <div className="row">
                     <span className={`pill ${scoreClass(a.symmetry)}`}>симметрия {a.symmetry}</span>
-                    {a.pose && <span className="pill">поворот {Math.abs(a.pose.yaw).toFixed(0)}°</span>}
+                    <span className={`pill ${(a.confidence ?? 100) >= 80 ? 'good' : (a.confidence ?? 100) >= 50 ? 'mid' : 'bad'}`}>точность замера {a.confidence ?? 100}%</span>
                   </div>
                 </div>
               </div>
@@ -148,20 +148,21 @@ export default function Analyze() {
 }
 
 function MetricRow({ m, open, onClick }: { m: Metric; open: boolean; onClick: () => void }) {
+  const off = !!m.unreliable
   return (
     <div className="metric" onClick={onClick}>
-      <div className="row between" style={{ flexWrap: 'nowrap' }}>
+      <div className="row between" style={{ flexWrap: 'nowrap', opacity: off ? 0.5 : 1 }}>
         <div>
           <div style={{ fontWeight: 600 }}>{m.name}</div>
-          <div className="tiny muted">норма {m.idealDisplay} · {MOD_LABEL[m.modifiable]}</div>
+          <div className="tiny muted">{off ? `не засчитано: ${m.unreliable}` : `норма ${m.idealDisplay} · ${MOD_LABEL[m.modifiable]}`}</div>
         </div>
-        <div className="val" style={{ color: `var(--${scoreClass(m.score)})` }}>{m.display}</div>
+        <div className="val" style={{ color: off ? 'var(--muted)' : `var(--${scoreClass(m.score)})` }}>{m.display}</div>
       </div>
-      <div style={{ marginTop: 8 }}><Bar value={m.score} cls={scoreClass(m.score)} /></div>
+      {!off && <div style={{ marginTop: 8 }}><Bar value={m.score} cls={scoreClass(m.score)} /></div>}
       {open && (
         <div className="small" style={{ marginTop: 12 }}>
           <p className="muted">{m.what}</p>
-          <p><b>{m.verdict}</b></p>
+          {off ? <p><b>На этом фото измерение искажено ({m.unreliable}). Переснимите — и оно будет засчитано.</b></p> : <p><b>{m.verdict}</b></p>}
           <ul style={{ paddingLeft: 18, margin: 0 }}>{m.levers.map((l) => <li key={l}>{l}</li>)}</ul>
         </div>
       )}

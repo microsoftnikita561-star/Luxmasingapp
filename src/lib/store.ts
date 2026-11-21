@@ -57,7 +57,7 @@ const initial: AppState = {
   skin: [],
   drills: {},
   chat: [],
-  settings: { openrouterKey: '', model: 'google/gemini-2.5-flash', theme: 'auto' },
+  settings: { openrouterKey: '', model: '~google/gemini-flash-latest', theme: 'auto' },
 }
 
 function load(): AppState {
@@ -65,7 +65,9 @@ function load(): AppState {
     const raw = localStorage.getItem(KEY)
     if (!raw) return initial
     const s = JSON.parse(raw)
-    return { ...initial, ...s, profile: { ...initial.profile, ...s.profile }, settings: { ...initial.settings, ...s.settings } }
+    const settings = { ...initial.settings, ...s.settings }
+    if (settings.model === 'google/gemini-2.5-flash') settings.model = initial.settings.model // старой модели больше нет в каталоге
+    return { ...initial, ...s, profile: { ...initial.profile, ...s.profile }, settings }
   } catch {
     return initial
   }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { exportData, importData, resetAll, setState, useStore } from '../lib/store'
-import { MODEL_PRESETS } from '../lib/openrouter'
+import { MODEL_PRESETS, listVisionModels, type ModelInfo } from '../lib/openrouter'
 import { ProfileForm } from './Onboarding'
 import { buildShared, renderCard, shareUrl } from '../lib/share'
 import { Icon } from '../components/Icon'
@@ -10,6 +10,8 @@ export default function ProfilePage() {
   const settings = useStore((s) => s.settings)
   const [saved, setSaved] = useState(false)
   const file = useRef<HTMLInputElement>(null)
+  const [models, setModels] = useState<ModelInfo[] | null>(null)
+  useEffect(() => { listVisionModels().then((l) => setModels(l.sort((a, b) => a.pricePerM - b.pricePerM))).catch(() => {}) }, [])
 
   const download = () => {
     const blob = new Blob([exportData()], { type: 'application/json' })
@@ -35,14 +37,20 @@ export default function ProfilePage() {
           <input type="password" value={settings.openrouterKey} placeholder="sk-or-v1-…" onChange={(e) => setState((s) => ({ ...s, settings: { ...s.settings, openrouterKey: e.target.value.trim() } }))} />
         </div>
         <div>
-          <label>Модель (нужна модель с поддержкой изображений для разбора фото)</label>
-          <input list="models" value={settings.model} onChange={(e) => setState((s) => ({ ...s, settings: { ...s.settings, model: e.target.value.trim() } }))} />
-          <datalist id="models">{MODEL_PRESETS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</datalist>
-          <div className="chips mt">
-            {MODEL_PRESETS.map((m) => (
-              <button key={m.id} className={`chip ${settings.model === m.id ? 'on' : ''}`} title={m.label} onClick={() => setState((s) => ({ ...s, settings: { ...s.settings, model: m.id } }))}>{m.id.split('/')[1]}</button>
-            ))}
-          </div>
+          <label>Модель (только те, что умеют смотреть фото)</label>
+          {models ? (
+            <select value={settings.model} onChange={(e) => setState((s) => ({ ...s, settings: { ...s.settings, model: e.target.value } }))}>
+              {!models.some((m) => m.id === settings.model) && <option value={settings.model}>{settings.model}</option>}
+              {models.map((m) => <option key={m.id} value={m.id}>{m.name} — {m.pricePerM ? `$${m.pricePerM.toFixed(2)} за 1 млн токенов` : 'бесплатно'}</option>)}
+            </select>
+          ) : (
+            <div className="chips">
+              {MODEL_PRESETS.map((m) => (
+                <button key={m.id} className={`chip ${settings.model === m.id ? 'on' : ''}`} onClick={() => setState((s) => ({ ...s, settings: { ...s.settings, model: m.id } }))}>{m.label}</button>
+              ))}
+            </div>
+          )}
+          <p className="tiny muted" style={{ marginTop: 6 }}>{models ? `Список загружен из каталога OpenRouter: ${models.length} моделей.` : 'Каталог OpenRouter пока не загрузился — показан короткий список.'}</p>
         </div>
       </div>
       <div className="card stack">

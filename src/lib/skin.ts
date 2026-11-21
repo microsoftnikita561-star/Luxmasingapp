@@ -51,34 +51,10 @@ function srgbToLab(r: number, g: number, b: number): [number, number, number] {
   return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
 }
 
-export function analyzeSkin(src: HTMLCanvasElement, lms: NLm[]): SkinResult {
-  // Область лица
-  let x0 = 1, y0 = 1, x1 = 0, y1 = 0
-  for (const i of OVAL) { const p = lms[i]; x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y) }
-  const sx = x0 * src.width, sy = y0 * src.height
-  const sw = (x1 - x0) * src.width, sh = (y1 - y0) * src.height
-  const scale = W / sw
-  const H = Math.round(sh * scale)
-  const c = document.createElement('canvas'); c.width = W; c.height = H
-  const ctx = c.getContext('2d', { willReadFrequently: true })!
-  ctx.imageSmoothingQuality = 'high'
-  ctx.drawImage(src, sx, sy, sw, sh, 0, 0, W, H)
-  const img = ctx.getImageData(0, 0, W, H).data
+interface Core { local: { id: number; cx: number; cy: number; area: number; strength: number; kind: Spot['kind'] }[]; redness: number; evenness: number; lighting: SkinResult['lighting'] }
 
-  const P = (i: number) => ({ x: (lms[i].x * src.width - sx) * scale, y: (lms[i].y * src.height - sy) * scale })
-
-  // Маска кожи
-  const mc = document.createElement('canvas'); mc.width = W; mc.height = H
-  const m = mc.getContext('2d', { willReadFrequently: true })!
-  const poly = (idx: number[]) => { m.beginPath(); idx.forEach((i, k) => { const p = P(i); if (k) m.lineTo(p.x, p.y); else m.moveTo(p.x, p.y) }); m.closePath() }
-  m.fillStyle = '#fff'; poly(OVAL); m.fill()
-  m.strokeStyle = '#000'; m.lineJoin = 'round'
-  m.lineWidth = W * 0.07; poly(OVAL); m.stroke() // отступ от края лица (волосы, фон, уши)
-  m.fillStyle = '#000'
-  for (const [ring, pad] of [[EYE_R, 0.06], [EYE_L, 0.06], [LIPS, 0.035], [BROW_R, 0.04], [BROW_L, 0.04], [NOSE_BASE, 0.03]] as [number[], number][]) {
-    poly(ring); m.fill(); m.lineWidth = W * pad; m.stroke()
-  }
-  const md = m.getImageData(0, 0, W, H).data
+/** Ядро: по картинке WxH и маске кожи находит компактные покраснения */
+function scan(img: Uint8ClampedArray, md: Uint8ClampedArray, H: number, midX: number): Core | null {
   const N = W * H
   const mask = new Uint8Array(N)
   const A = new Float32Array(N), Lm = new Float32Array(N)
@@ -90,7 +66,7 @@ export function analyzeSkin(src: HTMLCanvasElement, lms: NLm[]): SkinResult {
       if (L > 18 && L < 96) { mask[i] = 1; A[i] = a; Lm[i] = L; nMask++; sumL += L; sumA += a }
     }
   }
-  if (nMask < 2000) return { spots: [], redness: 0, evenness: 0, lighting: 'dark', faceWidthPx: sw }
+  if (nMask < 2000) return null
   const meanL = sumL / nMask, meanA = sumA / nMask
 
   // Локальный фон: среднее a* и L в окне (интегральные изображения с учётом маски)
@@ -128,12 +104,10 @@ export function analyzeSkin(src: HTMLCanvasElement, lms: NLm[]): SkinResult {
 
   // Связные области выше порога
   const lab = new Int32Array(N)
-  const spots: Spot[] = []
+  const local: Core['local'] = []
   const stack: number[] = []
   const minArea = Math.round((W * 0.007) ** 2 * Math.PI)
   const maxArea = Math.round((W * 0.05) ** 2 * Math.PI)
-  const browY = Math.min(P(105).y, P(334).y)
-  const mouthY = P(17).y, noseL = P(129).x, noseR = P(358).x, noseTop = P(168).y, noseBot = P(2).y, midX = P(1).x
   let id = 0
   for (let s = 0; s < N; s++) {
     if (!mask[s] || lab[s] || D[s] < thr) continue
@@ -158,23 +132,9 @@ export function analyzeSkin(src: HTMLCanvasElement, lms: NLm[]): SkinResult {
     if (aspect > 2.2 || fill < 0.42) continue // вытянутое — складка, сосуд, край тени
     cx /= area; cy /= area
     const strength = sum / area
-    let zone: Zone
-    if (cy < browY) zone = 'forehead'
-    else if (cy > mouthY) zone = 'chin'
-    else if (cx > noseL && cx < noseR && cy > noseTop && cy < noseBot + W * 0.02) zone = 'nose'
-    else if (cy > mouthY - W * 0.04 && Math.abs(cx - midX) < W * 0.16) zone = 'chin'
-    else zone = cx < midX ? 'cheekR' : 'cheekL'
-    spots.push({
-      id,
-      x: (cx / scale + sx) / src.width,
-      y: (cy / scale + sy) / src.height,
-      r: (Math.sqrt(area / Math.PI) * 1.9) / scale / src.width,
-      strength,
-      kind: peak > thr * 1.7 && strength > thr * 1.15 ? 'inflamed' : 'mark',
-      zone,
-    })
+    local.push({ id, cx, cy, area, strength, kind: peak > thr * 1.7 && strength > thr * 1.15 ? 'inflamed' : 'mark' })
   }
-  spots.sort((a, b) => b.strength - a.strength)
+  local.sort((a, b) => b.strength - a.strength)
 
   const redness = Math.max(0, Math.min(100, Math.round((meanA - 8) * 5.5)))
   const evenness = Math.max(0, Math.min(100, Math.round(100 - (sigma - 1.2) * 14 - (sigmaL - 3) * 4)))
@@ -184,7 +144,63 @@ export function analyzeSkin(src: HTMLCanvasElement, lms: NLm[]): SkinResult {
   const side = Math.abs(lL / Math.max(1, nL) - lR / Math.max(1, nR))
   const lighting = meanL < 38 ? 'dark' : meanL > 86 ? 'bright' : side > 12 ? 'uneven' : 'ok'
 
-  return { spots: spots.slice(0, 80), redness, evenness, lighting, faceWidthPx: sw }
+  return { local: local.slice(0, 80), redness, evenness, lighting }
+}
+
+
+export function analyzeSkin(src: HTMLCanvasElement, lms: NLm[]): SkinResult {
+  // Область лица
+  let x0 = 1, y0 = 1, x1 = 0, y1 = 0
+  for (const i of OVAL) { const p = lms[i]; x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y) }
+  const sx = x0 * src.width, sy = y0 * src.height
+  const sw = (x1 - x0) * src.width, sh = (y1 - y0) * src.height
+  const scale = W / sw
+  const H = Math.round(sh * scale)
+  const c = document.createElement('canvas'); c.width = W; c.height = H
+  const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(src, sx, sy, sw, sh, 0, 0, W, H)
+  const img = ctx.getImageData(0, 0, W, H).data
+
+  const P = (i: number) => ({ x: (lms[i].x * src.width - sx) * scale, y: (lms[i].y * src.height - sy) * scale })
+
+  // Маска кожи
+  const mc = document.createElement('canvas'); mc.width = W; mc.height = H
+  const m = mc.getContext('2d', { willReadFrequently: true })!
+  const poly = (idx: number[]) => { m.beginPath(); idx.forEach((i, k) => { const p = P(i); if (k) m.lineTo(p.x, p.y); else m.moveTo(p.x, p.y) }); m.closePath() }
+  m.fillStyle = '#fff'; poly(OVAL); m.fill()
+  m.strokeStyle = '#000'; m.lineJoin = 'round'
+  m.lineWidth = W * 0.07; poly(OVAL); m.stroke() // отступ от края лица (волосы, фон, уши)
+  m.fillStyle = '#000'
+  for (const [ring, pad] of [[EYE_R, 0.06], [EYE_L, 0.06], [LIPS, 0.035], [BROW_R, 0.04], [BROW_L, 0.04], [NOSE_BASE, 0.03]] as [number[], number][]) {
+    poly(ring); m.fill(); m.lineWidth = W * pad; m.stroke()
+  }
+  const core = scan(img, m.getImageData(0, 0, W, H).data, H, P(1).x)
+  if (!core) return { spots: [], redness: 0, evenness: 0, lighting: 'dark', faceWidthPx: sw }
+  const browY = Math.min(P(105).y, P(334).y)
+  const mouthY = P(17).y, noseL = P(129).x, noseR = P(358).x, noseTop = P(168).y, noseBot = P(2).y, midX = P(1).x
+  const spots: Spot[] = core.local.map(({ id, cx, cy, area, strength, kind }) => {
+    let zone: Zone
+    if (cy < browY) zone = 'forehead'
+    else if (cy > mouthY) zone = 'chin'
+    else if (cx > noseL && cx < noseR && cy > noseTop && cy < noseBot + W * 0.02) zone = 'nose'
+    else if (cy > mouthY - W * 0.04 && Math.abs(cx - midX) < W * 0.16) zone = 'chin'
+    else zone = cx < midX ? 'cheekR' : 'cheekL'
+    return { id, x: (cx / scale + sx) / src.width, y: (cy / scale + sy) / src.height, r: (Math.sqrt(area / Math.PI) * 1.9) / scale / src.width, strength, kind, zone }
+  })
+  return { spots, redness: core.redness, evenness: core.evenness, lighting: core.lighting, faceWidthPx: sw }
+}
+
+/** Проверка ядра на произвольном участке кожи (прямоугольник в долях изображения) — используется в тестах */
+export function scanPatch(src: HTMLCanvasElement, r: { x: number; y: number; w: number; h: number }) {
+  const sw = r.w * src.width, sh = r.h * src.height
+  const H = Math.round((sh * W) / sw)
+  const c = document.createElement('canvas'); c.width = W; c.height = H
+  const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.drawImage(src, r.x * src.width, r.y * src.height, sw, sh, 0, 0, W, H)
+  const md = new Uint8ClampedArray(W * H * 4).fill(255)
+  const core = scan(ctx.getImageData(0, 0, W, H).data, md, H, W / 2)
+  return core ? core.local.map((s) => ({ x: r.x + (s.cx / W) * r.w, y: r.y + (s.cy / H) * r.h, kind: s.kind, strength: s.strength })) : []
 }
 
 export type Severity = 'clear' | 'mild' | 'moderate' | 'severe'

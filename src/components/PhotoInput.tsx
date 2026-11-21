@@ -5,7 +5,7 @@ import { Icon } from './Icon'
 
 export const useCapture = () => useSyncExternalStore(subscribeCapture, getCapture)
 
-async function detect(source: CanvasImageSource, w: number, h: number): Promise<Capture | null> {
+export async function detectFace(source: CanvasImageSource, w: number, h: number): Promise<Capture | null> {
   const lm = await getImageLandmarker()
   const scale = Math.min(1, 1600 / Math.max(w, h))
   let img = document.createElement('canvas')
@@ -44,10 +44,16 @@ export function PhotoInput({ hint }: { hint: string }) {
 
   useEffect(() => { getImageLandmarker().catch(() => {}); return () => stopCam() }, [])
 
+  // поток подключаем, когда <video> уже есть в разметке
+  useEffect(() => {
+    const v = videoRef.current
+    if (cam && v && streamRef.current) { v.srcObject = streamRef.current; v.play().catch(() => {}) }
+  }, [cam])
+
   async function run(source: CanvasImageSource, w: number, h: number) {
     setError(null); setBusy('Ищу точки лица…')
     try {
-      const cap = await detect(source, w, h)
+      const cap = await detectFace(source, w, h)
       if (!cap) setError('Лицо не найдено. Нужна чёткая фотография анфас при хорошем освещении.')
       else setCapture(cap)
     } catch (e) { setError('Не удалось запустить модель: ' + (e as Error).message) }
@@ -65,11 +71,19 @@ export function PhotoInput({ hint }: { hint: string }) {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } } })
       streamRef.current = s; setCam(true)
-      setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play() } }, 0)
     } catch { setError('Нет доступа к камере. Разрешите доступ или загрузите фото.') }
   }
   function stopCam() { streamRef.current?.getTracks().forEach((t) => t.stop()); streamRef.current = null; setCam(false) }
-  function snap() { const v = videoRef.current; if (!v) return; run(v, v.videoWidth, v.videoHeight); stopCam() }
+  function snap() {
+    const v = videoRef.current
+    if (!v || !v.videoWidth) return
+    // кадр копируем сразу: после остановки камеры видео становится чёрным
+    const frame = document.createElement('canvas')
+    frame.width = v.videoWidth; frame.height = v.videoHeight
+    frame.getContext('2d')!.drawImage(v, 0, 0)
+    stopCam()
+    run(frame, frame.width, frame.height)
+  }
 
   return (
     <div className="stack">

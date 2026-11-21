@@ -1,6 +1,6 @@
 // Обучающие видео с YouTube для техник и упражнений.
-// Каждый id взят из URL, который буквально присутствовал в поисковой выдаче
-// (youtube.com/watch?v=ID). Пустой массив = надёжное видео не найдено.
+// Все ролики проверены через YouTube oEmbed: существуют и разрешают встраивание;
+// названия каналов взяты оттуда же.
 
 export interface Video {
   id: string
@@ -11,17 +11,17 @@ export interface Video {
 
 export const VIDEOS: Record<string, Video[]> = {
   squinch: [
-    { id: 'ff7nltdBCHs', title: 'Mastering the Squinch', channel: 'Peter Hurley', lang: 'en' },
+    { id: 'ff7nltdBCHs', title: "The Squinch — Look Confident in Every Photo", channel: 'Peter Hurley', lang: 'en' },
   ],
   'jawline-photo': [
-    { id: 'uQfVFilXGMk', title: "It's all about the Jaw", channel: 'Peter Hurley', lang: 'en' },
+    { id: 'uQfVFilXGMk', title: "It's all about the Jaw", channel: 'Kevin Scott', lang: 'en' },
   ],
-  duchenne: [],
+  duchenne: [{ id: 'cQAOFE4QgC4', title: 'How to SMILE NATURALLY in photos!', channel: 'Chris Hau', lang: 'en' }],
   'relaxed-face': [
     {
       id: 'Iu14BN5LuUA',
       title: 'How to Get the Best Facial Expressions for Portraits with Peter Hurley',
-      channel: 'Westcott',
+      channel: 'Westcott Lighting',
       lang: 'en',
     },
   ],
@@ -37,7 +37,7 @@ export const VIDEOS: Record<string, Video[]> = {
     {
       id: 'T_lqxtTAKM8',
       title: 'Wall Angels Exercise to Improve Posture',
-      channel: 'Health-Fit - Boca Raton Sports Chiropractic',
+      channel: 'Health-Fit — Boca Raton Sports Chiropractic',
       lang: 'en',
     },
   ],
@@ -53,7 +53,7 @@ export const VIDEOS: Record<string, Video[]> = {
     {
       id: 'UMGpxwhsy_k',
       title: 'Jeff Cavaliere Shows Andrew Huberman the "Face Pull"',
-      channel: 'ATHLEAN-X',
+      channel: 'Huberman Lab Clips',
       lang: 'en',
     },
   ],
@@ -79,7 +79,7 @@ export const VIDEOS: Record<string, Video[]> = {
       lang: 'en',
     },
   ],
-  'tongue-posture': [],
+  'tongue-posture': [{ id: 'P2vBu0j4rCQ', title: 'Where to Rest Your Tongue (Myofunctional Therapy)', channel: 'Marie McElderry', lang: 'en' }],
   'spf-apply': [
     { id: 'j6wki7Bpw3w', title: 'How much sunscreen & how often?| Dr Dray', channel: 'Dr Dray', lang: 'en' },
   ],
@@ -102,7 +102,7 @@ export const VIDEOS: Record<string, Video[]> = {
     {
       id: '2xeGDo7rIVE',
       title: 'How To Trim The PERFECT Neckline For Your Beard',
-      channel: 'VOLT',
+      channel: 'VOLT Lifeproof Grooming',
       lang: 'en',
     },
   ],
@@ -118,13 +118,13 @@ export const VIDEOS: Record<string, Video[]> = {
     {
       id: '08L9JZnhKKA',
       title: 'Как уложить волосы феном? ®️REBEL l Мужская укладка',
-      channel: 'REBEL',
+      channel: 'REBEL BIBLE',
       lang: 'ru',
     },
     {
       id: 'NFj5vxsny_I',
       title: "How To Blow Dry Men's Hair",
-      channel: 'Victory Barber & Brand',
+      channel: 'Behind The Chair',
       lang: 'en',
     },
   ],
