@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { chat, COACH_SYSTEM } from '../lib/openrouter'
 import { setState, useStore, type ChatMsg } from '../lib/store'
+import { Icon } from '../components/Icon'
 
 const QUICK = [
   'Составь мне план на 12 недель по моему анализу',
@@ -32,9 +33,12 @@ export default function Coach() {
   const [err, setErr] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const skinLog = useStore((s) => s.skin)
+  const lastSkin = skinLog[skinLog.length - 1]
   const last = progress[progress.length - 1]?.analysis
   const context = `Профиль: пол ${profile.sex === 'male' ? 'мужской' : 'женский'}, возраст ${profile.age}, кожа: ${profile.skin}${profile.acne ? ', есть акне' : ''}${profile.heightCm ? `, рост ${profile.heightCm} см` : ''}${profile.weightKg ? `, вес ${profile.weightKg} кг` : ''}. Цели: ${profile.goals.join(', ') || 'не указаны'}.` +
-    (last ? `\nПоследний геометрический анализ лица: гармония ${last.harmony}/100, симметрия ${last.symmetry}, форма лица «${last.shape.name}». Метрики: ${last.metrics.map((m) => `${m.name} ${m.display} (норма ${m.idealDisplay}, балл ${m.score})`).join('; ')}.` : '\nАнализ лица ещё не делался.')
+    (last ? `\nПоследний геометрический анализ лица: гармония ${last.harmony}/100, симметрия ${last.symmetry}, форма лица «${last.shape.name}». Метрики: ${last.metrics.map((m) => `${m.name} ${m.display} (норма ${m.idealDisplay}, балл ${m.score})`).join('; ')}.` : '\nАнализ лица ещё не делался.') +
+    (lastSkin ? `\nДетектор кожи: воспалений ${lastSkin.inflamed}, следов ${lastSkin.marks}, степень ${lastSkin.severity}.` : '')
 
   async function send(t = text) {
     if (!settings.openrouterKey) { setErr('Добавьте ключ OpenRouter в Профиле.'); return }
@@ -57,12 +61,12 @@ export default function Coach() {
   return (
     <div className="stack" style={{ maxWidth: 820 }}>
       <div className="row between">
-        <h1 style={{ margin: 0 }}>🤖 ИИ-коуч</h1>
+        <div><div className="kicker">Коуч</div><h1 style={{ margin: 0 }}>Вопросы и разбор фото</h1></div>
         {msgs.length > 0 && <button className="btn sm ghost" onClick={() => setState((s) => ({ ...s, chat: [] }))}>Очистить</button>}
       </div>
       <p className="muted small">Коуч видит ваш профиль и последний анализ лица. Прикрепите фото — модель разберёт кожу, волосы, брови, стрижку и ракурс. Модель: <code>{settings.model}</code></p>
       {!settings.openrouterKey && (
-        <div className="warn">Нужен ключ OpenRouter. <a href="#profile">Добавить в Профиле →</a></div>
+        <div className="warn"><b>Нужен ключ</b>Чтобы коуч отвечал, добавьте ключ OpenRouter <a href="#profile">в профиле</a>.</div>
       )}
       <div className="card chat" style={{ minHeight: 240 }}>
         {msgs.length === 0 && (
@@ -79,14 +83,14 @@ export default function Coach() {
         ))}
         {busy && <div className="msg assistant muted">Думаю…</div>}
       </div>
-      {err && <div className="warn small">{err}</div>}
-      {img && <div className="row"><img src={img} style={{ height: 70, borderRadius: 8 }} alt="" /><button className="btn sm" onClick={() => setImg(null)}>✕</button></div>}
+      {err && <div className="warn small"><b>Ошибка</b>{err}</div>}
+      {img && <div className="row"><img src={img} style={{ height: 70, borderRadius: 8 }} alt="" /><button className="btn sm" onClick={() => setImg(null)} aria-label="Убрать фото"><Icon name="x" /></button></div>}
       <div className="row" style={{ flexWrap: 'nowrap' }}>
-        <button className="btn" onClick={() => fileRef.current?.click()} title="Прикрепить фото">📎</button>
+        <button className="btn" onClick={() => fileRef.current?.click()} title="Прикрепить фото" aria-label="Прикрепить фото"><Icon name="clip" /></button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setImg(await fileToDataUrl(f)); e.target.value = '' }} />
         <textarea rows={2} value={text} placeholder="Спросите о коже, стрижке, тренировках, стиле…" onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} />
-        <button className="btn primary" disabled={busy} onClick={() => send()}>➤</button>
+        <button className="btn primary" disabled={busy} onClick={() => send()} aria-label="Отправить"><Icon name="send" /></button>
       </div>
       <p className="tiny muted">Ответы ИИ могут содержать ошибки и не заменяют консультацию врача.</p>
     </div>

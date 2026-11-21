@@ -1,88 +1,81 @@
 import { tasksFor } from '../data/protocols'
-import { MODULES } from '../data/courses'
+import { ALL_MODULES } from '../data/courses'
 import { DRILLS } from '../data/drills'
 import { levelInfo, streak, today, useStore, LEVELS } from '../lib/store'
-import { Bar, Ring } from '../components/ui'
+import { Bar } from '../components/ui'
+import { Icon } from '../components/Icon'
 import { TaskRow } from './Program'
 
 export default function Home() {
-  const s = {
-    profile: useStore((x) => x.profile),
-    xp: useStore((x) => x.xp),
-    done: useStore((x) => x.done),
-    lessons: useStore((x) => x.lessonsDone),
-    progress: useStore((x) => x.progress),
-  }
-  const lvl = levelInfo(s.xp)
-  const tasks = tasksFor(s.profile)
-  const doneToday = s.done[today()] ?? []
-  const pct = tasks.length ? Math.round((tasks.filter((t) => doneToday.includes(t.id)).length / tasks.length) * 100) : 0
-  const nextLesson = MODULES.flatMap((m) => m.lessons).find((l) => !s.lessons.includes(l.id))
-  const last = s.progress[s.progress.length - 1]
-  const upcoming = tasks.filter((t) => !doneToday.includes(t.id)).slice(0, 4)
+  const profile = useStore((x) => x.profile)
+  const xp = useStore((x) => x.xp)
+  const done = useStore((x) => x.done)
+  const lessons = useStore((x) => x.lessonsDone)
+  const progress = useStore((x) => x.progress)
+  const skin = useStore((x) => x.skin)
+  const lvl = levelInfo(xp)
+  const tasks = tasksFor(profile)
+  const doneToday = done[today()] ?? []
+  const nDone = tasks.filter((t) => doneToday.includes(t.id)).length
+  const allLessons = ALL_MODULES.flatMap((m) => m.lessons)
+  const nextLesson = allLessons.find((l) => !lessons.includes(l.id))
+  const last = progress[progress.length - 1]
+  const upcoming = tasks.filter((t) => !doneToday.includes(t.id)).slice(0, 5)
   const drill = DRILLS[new Date().getDate() % DRILLS.length]
-  const hour = new Date().getHours()
-  const hi = hour < 6 ? 'Доброй ночи' : hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер'
+  const date = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <div className="stack">
       <div>
-        <h1>{hi}{s.profile.name ? `, ${s.profile.name}` : ''} 👋</h1>
-        <p className="muted">Каждый выполненный пункт приближает вас к уровню «Луксмастер».</p>
+        <div className="kicker">{date}</div>
+        <h1>{profile.name ? `${profile.name}, ` : ''}на сегодня {tasks.length - nDone === 0 ? 'всё сделано' : `осталось ${tasks.length - nDone}`}</h1>
       </div>
 
-      <div className="card glow">
-        <div className="row" style={{ gap: 22 }}>
-          <Ring value={lvl.pct * 100} size={110} label={lvl.index + 1} sub="уровень" />
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div className="hero-score" style={{ fontSize: 30 }}>{lvl.name}</div>
-            <div className="small muted" style={{ margin: '6px 0 8px' }}>{s.xp} XP {lvl.next && `· до «${lvl.next}» осталось ${lvl.toNext} XP`}</div>
-            <Bar value={lvl.pct * 100} />
-            <div className="row tiny muted" style={{ marginTop: 8 }}>
-              {LEVELS.map((l, i) => <span key={l.name} style={{ color: i <= lvl.index ? 'var(--gold)' : undefined }}>{i <= lvl.index ? '★' : '☆'}</span>)}
-            </div>
+      <div className="card ink">
+        <div className="row between" style={{ alignItems: 'flex-end' }}>
+          <div>
+            <div className="label">Уровень {lvl.index + 1} из {LEVELS.length}</div>
+            <div className="hero-score">{lvl.name}</div>
           </div>
+          <div className="num" style={{ fontSize: 15 }}>{xp} XP{lvl.next ? ` · до «${lvl.next}» ${lvl.toNext}` : ''}</div>
         </div>
+        <div className="bar" style={{ marginTop: 16, background: 'color-mix(in srgb, var(--bg) 22%, transparent)' }}><i style={{ width: `${lvl.pct * 100}%`, background: 'var(--bg)' }} /></div>
       </div>
 
       <div className="grid g4">
-        <div className="card"><div className="small muted">Сегодня</div><div className="stat">{pct}<small>%</small></div></div>
-        <div className="card"><div className="small muted">Серия</div><div className="stat">🔥 {streak(s.done)}<small> дн</small></div></div>
-        <div className="card"><div className="small muted">Гармония</div><div className="stat">{last ? last.analysis.harmony : '—'}<small>{last ? '/100' : ''}</small></div></div>
-        <div className="card"><div className="small muted">Уроки</div><div className="stat">{s.lessons.length}<small>/{MODULES.reduce((a, m) => a + m.lessons.length, 0)}</small></div></div>
+        <div className="card"><div className="label">Сегодня</div><div className="stat">{nDone}<small> / {tasks.length}</small></div></div>
+        <div className="card"><div className="label">Серия</div><div className="stat">{streak(done)}<small> дн.</small></div></div>
+        <div className="card"><div className="label">Гармония</div><div className="stat">{last ? last.analysis.harmony : '—'}</div></div>
+        <div className="card"><div className="label">Воспаления</div><div className="stat">{skin.length ? skin[skin.length - 1].inflamed : '—'}</div></div>
       </div>
 
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div className="card">
-          <div className="row between"><h3 style={{ margin: 0 }}>Следующие задачи</h3><a href="#program" className="small">Вся программа →</a></div>
-          <div className="mt">
-            {upcoming.length ? upcoming.map((t) => <TaskRow key={t.id} t={t} done={false} />) : <p className="muted">🎉 Всё на сегодня выполнено!</p>}
+          <div className="row between"><div className="kicker" style={{ margin: 0 }}>Дальше по плану</div><a href="#program" className="small muted">Вся программа</a></div>
+          <div style={{ marginTop: 6 }}>
+            {upcoming.length ? upcoming.map((t) => <TaskRow key={t.id} t={t} done={false} />) : <p className="muted mt">На сегодня всё выполнено. Завтра продолжим.</p>}
           </div>
+          <div style={{ marginTop: 10 }}><Bar value={tasks.length ? (nDone / tasks.length) * 100 : 0} /></div>
         </div>
         <div className="stack">
-          {!last && (
-            <a href="#analyze" className="card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-              <h3>🔬 Сделайте первый анализ лица</h3>
-              <p className="small muted">478 точек, 14 пропорций, форма лица и персональные приоритеты.</p>
-            </a>
-          )}
-          <a href={`#trainer/${drill.id}`} className="card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-            <div className="tiny muted">Упражнение дня</div>
-            <h3>{drill.icon} {drill.name}</h3>
-            <p className="small muted">{drill.goal}</p>
-          </a>
-          {nextLesson && (
-            <a href={`#academy/${nextLesson.id}`} className="card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-              <div className="tiny muted">Следующий урок · {nextLesson.minutes} мин · +30 XP</div>
-              <h3>🎓 {nextLesson.title}</h3>
-            </a>
-          )}
-          <a href="#coach" className="card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-            <h3>🤖 Спросить ИИ-коуча</h3>
-            <p className="small muted">Персональный план, разбор фото кожи и стрижки.</p>
-          </a>
+          {!last && <Tile href="#analyze" kicker="Первый шаг" title="Сделать анализ лица" text="478 точек, 14 пропорций, форма лица и приоритеты." />}
+          {!skin.length && <Tile href="#skin" kicker="Кожа" title="Проверить кожу" text="Детектор воспалений и схема ухода под возраст." />}
+          <Tile href={`#trainer/face/${drill.id}`} kicker="Упражнение дня" title={drill.name} text={drill.goal} />
+          {nextLesson && <Tile href={`#academy/${nextLesson.id}`} kicker={`Урок · ${nextLesson.minutes} мин`} title={nextLesson.title} />}
+          <Tile href="#trainer/posture" kicker="8 минут" title="Осанка и шея" text="Шесть упражнений с фото каждого движения." />
         </div>
       </div>
     </div>
+  )
+}
+
+function Tile({ href, kicker, title, text }: { href: string; kicker: string; title: string; text?: string }) {
+  return (
+    <a href={href} className="card">
+      <div className="row between" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+        <div><div className="kicker">{kicker}</div><h3 style={{ margin: 0 }}>{title}</h3>{text && <p className="small muted" style={{ margin: '6px 0 0' }}>{text}</p>}</div>
+        <Icon name="right" />
+      </div>
+    </a>
   )
 }

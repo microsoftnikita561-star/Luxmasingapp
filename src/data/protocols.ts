@@ -3,13 +3,13 @@ import type { Profile } from '../lib/store'
 export type Category = 'skin' | 'body' | 'face' | 'hair' | 'sleep' | 'style' | 'mind'
 
 export const CATEGORIES: Record<Category, { name: string; icon: string; color: string }> = {
-  skin: { name: 'Кожа', icon: '✨', color: '#f6a5c0' },
-  body: { name: 'Тело', icon: '💪', color: '#7cc4ff' },
-  face: { name: 'Лицо и осанка', icon: '🗿', color: '#c6a2ff' },
-  hair: { name: 'Волосы', icon: '💈', color: '#ffd27c' },
-  sleep: { name: 'Сон и питание', icon: '🌙', color: '#8fe3c0' },
-  style: { name: 'Стиль', icon: '🧥', color: '#ffb38a' },
-  mind: { name: 'Подача', icon: '🧠', color: '#a0b4ff' },
+  skin: { name: 'Кожа', icon: 'skin', color: '#f6a5c0' },
+  body: { name: 'Тело', icon: 'body', color: '#7cc4ff' },
+  face: { name: 'Лицо и осанка', icon: 'face', color: '#c6a2ff' },
+  hair: { name: 'Волосы', icon: 'hair', color: '#ffd27c' },
+  sleep: { name: 'Сон и питание', icon: 'sleep', color: '#8fe3c0' },
+  style: { name: 'Стиль', icon: 'style', color: '#ffb38a' },
+  mind: { name: 'Подача', icon: 'mind', color: '#a0b4ff' },
 }
 
 export interface Task {
@@ -30,7 +30,7 @@ export const TASKS: Task[] = [
   { id: 'am-cleanse', title: 'Умыться мягким гелем', desc: 'Тёплая вода, мягкий pH-нейтральный гель 30–60 сек. Не тереть полотенцем — промокнуть.', cat: 'skin', xp: 5, when: 'Утро', lesson: 'skin-basics' },
   { id: 'am-spf', title: 'SPF 30–50', desc: 'Главное антивозрастное средство. 2 пальца крема на лицо и шею, даже в пасмурную погоду. Обновлять каждые 2–3 ч на солнце.', cat: 'skin', xp: 10, when: 'Утро', lesson: 'skin-basics' },
   { id: 'pm-cleanse', title: 'Вечернее очищение', desc: 'Смыть SPF и себум. При стойком SPF/макияже — двойное очищение (гидрофильное масло → гель).', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-basics' },
-  { id: 'pm-active', title: 'Актив: ретиноид / кислоты', desc: 'Ретиноид (адапален 0.1% или ретинол) 3 вечера в неделю на сухую кожу, горошину на всё лицо. Начать с 2 раз в неделю. Не смешивать в один вечер с кислотами.', cat: 'skin', xp: 10, when: 'Вечер', days: [1, 3, 5], lesson: 'skin-actives' },
+  { id: 'pm-active', title: 'Актив: ретиноид / кислоты', desc: 'Ретиноид (адапален 0.1% или ретинол) 3 вечера в неделю на сухую кожу, горошину на всё лицо. Начать с 2 раз в неделю. Не смешивать в один вечер с кислотами.', cat: 'skin', xp: 10, when: 'Вечер', days: [1, 3, 5], lesson: 'skin-actives', only: (p) => p.age >= 18 || p.acne },
   { id: 'pm-moist', title: 'Увлажняющий крем', desc: 'Крем с керамидами / глицерином / пантенолом. Наносить на слегка влажную кожу.', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-basics' },
   { id: 'acne-bpo', title: 'Точечно бензоилпероксид', desc: 'BPO 2.5–5% на воспаления (короткий контакт 2–5 минут и смыть — меньше раздражения). Беречь ткань — отбеливает.', cat: 'skin', xp: 5, when: 'Вечер', lesson: 'skin-acne', only: (p) => p.acne },
   { id: 'lips', title: 'Бальзам для губ', desc: 'Не облизывать губы. Днём — бальзам с SPF.', cat: 'skin', xp: 3, when: 'Любое время' },
@@ -39,7 +39,7 @@ export const TASKS: Task[] = [
   // Тело
   { id: 'train', title: 'Силовая тренировка', desc: 'Полное тело 45–60 мин: присед/жим ногами, жим лёжа/отжимания, тяга, жим над головой, подтягивания. Плечи и спина дают V-силуэт.', cat: 'body', xp: 25, when: 'День', days: [1, 3, 5], lesson: 'body-training' },
   { id: 'steps', title: '8 000+ шагов', desc: 'Шаги — самый простой способ держать дефицит и низкий процент жира, который «открывает» скулы и челюсть.', cat: 'body', xp: 10, when: 'Любое время', lesson: 'body-fat' },
-  { id: 'protein', title: 'Белок 1.6–2 г/кг', desc: 'Мясо, рыба, яйца, творог, бобовые. Поддерживает мышцы на дефиците.', cat: 'body', xp: 10, when: 'Любое время', lesson: 'body-fat' },
+  { id: 'protein', title: 'Белок в каждом приёме пищи', desc: 'Мясо, рыба, яйца, творог, бобовые — ориентир 1.6–2 г на кг веса для взрослых. Подросткам считать не нужно: просто белок в каждом приёме пищи.', cat: 'body', xp: 10, when: 'Любое время', lesson: 'body-fat' },
   { id: 'cardio', title: 'Кардио 30 мин', desc: 'Быстрая ходьба, вело, бег — зона 2 (можно говорить, но тяжело петь).', cat: 'body', xp: 10, when: 'День', days: [2, 4, 6] },
 
   // Лицо и осанка
@@ -62,7 +62,7 @@ export const TASKS: Task[] = [
 
   // Стиль
   { id: 'fit', title: 'Одежда по размеру', desc: 'Перед выходом: плечевой шов на краю плеча, нет лишней ткани, брюки без «гармошки».', cat: 'style', xp: 5, when: 'Утро', lesson: 'style-fit' },
-  { id: 'scent', title: 'Парфюм: 2–3 пшика', desc: 'Шея и запястья. Ненавязчиво — люди должны почувствовать вблизи.', cat: 'style', xp: 3, when: 'Утро', days: [1, 2, 3, 4, 5] },
+  { id: 'scent', title: 'Парфюм: 2–3 нажатия', desc: 'Шея и запястья. Ненавязчиво — люди должны почувствовать вблизи.', cat: 'style', xp: 3, when: 'Утро', days: [1, 2, 3, 4, 5] },
 
   // Подача
   { id: 'eye', title: 'Зрительный контакт', desc: 'В разговоре держать взгляд 3–5 сек, отводить в сторону, а не вниз. Медленная речь и спокойные жесты.', cat: 'mind', xp: 5, when: 'День', lesson: 'mind-presence' },

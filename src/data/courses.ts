@@ -8,7 +8,7 @@ export interface Module { id: string; title: string; icon: string; desc: string;
 
 export const MODULES: Module[] = [
   {
-    id: 'base', title: 'Основы луксмаксинга', icon: '🧭', desc: 'Что реально влияет на внешность и в каком порядке этим заниматься.',
+    id: 'base', title: 'Основы луксмаксинга', icon: 'base', desc: 'Что реально влияет на внешность и в каком порядке этим заниматься.',
     lessons: [
       {
         id: 'intro', title: 'Что такое луксмаксинг и иерархия влияния', minutes: 6,
@@ -53,7 +53,7 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'skin', title: 'Кожа', icon: '✨', desc: 'Базовая рутина, активы, акне, зона глаз.',
+    id: 'skin', title: 'Кожа', icon: 'skin', desc: 'Базовая рутина, активы, акне, зона глаз.',
     lessons: [
       {
         id: 'skin-basics', title: 'Базовая рутина: 3 шага', minutes: 6,
@@ -140,7 +140,7 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'body', title: 'Тело и процент жира', icon: '💪', desc: 'Жир, тренировки, V-силуэт.',
+    id: 'body', title: 'Тело и процент жира', icon: 'body', desc: 'Жир, тренировки, V-силуэт.',
     lessons: [
       {
         id: 'body-fat', title: 'Процент жира и лицо', minutes: 7,
@@ -186,7 +186,7 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'face', title: 'Лицо, осанка, улыбка', icon: '🗿', desc: 'Осанка головы, язык, челюсть, зубы.',
+    id: 'face', title: 'Лицо, осанка, улыбка', icon: 'face', desc: 'Осанка головы, язык, челюсть, зубы.',
     lessons: [
       {
         id: 'face-posture', title: 'Осанка головы и шеи', minutes: 5,
@@ -240,7 +240,7 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'hair', title: 'Волосы, брови, борода', icon: '💈', desc: 'Стрижка под лицо, выпадение, брови.',
+    id: 'hair', title: 'Волосы, брови, борода', icon: 'hair', desc: 'Стрижка под лицо, выпадение, брови.',
     lessons: [
       {
         id: 'hair-cut', title: 'Стрижка под форму лица', minutes: 6,
@@ -316,7 +316,7 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'life', title: 'Сон, стиль, подача', icon: '🧥', desc: 'Сон, одежда, цвета, фотогеничность, харизма.',
+    id: 'life', title: 'Сон, стиль, подача', icon: 'life', desc: 'Сон, одежда, цвета, фотогеничность, харизма.',
     lessons: [
       {
         id: 'sleep', title: 'Сон — бесплатный луксмаксинг', minutes: 4,
@@ -388,7 +388,7 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'safety', title: 'Мифы и безопасность', icon: '🛡️', desc: 'Что опасно, а что — медицина у профессионалов.',
+    id: 'safety', title: 'Мифы и безопасность', icon: 'safety', desc: 'Что опасно, а что — медицина у профессионалов.',
     lessons: [
       {
         id: 'myths', title: 'Опасные «методы» из интернета', minutes: 6,
@@ -430,5 +430,7 @@ export const MODULES: Module[] = [
   },
 ]
 
-export const ALL_LESSONS = MODULES.flatMap((m) => m.lessons.map((l) => ({ ...l, module: m })))
+import { EXTRA_MODULES } from './courses2'
+export const ALL_MODULES: Module[] = [...MODULES, ...EXTRA_MODULES]
+export const ALL_LESSONS = ALL_MODULES.flatMap((m) => m.lessons.map((l) => ({ ...l, module: m })))
 export const lessonById = (id: string) => ALL_LESSONS.find((l) => l.id === id)

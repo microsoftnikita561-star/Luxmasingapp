@@ -57,23 +57,26 @@ export default function Onboarding() {
       <div className="modal">
         {step === 0 ? (
           <div className="stack">
-            <div className="logo" style={{ width: 54, height: 54, fontSize: 26 }}>L</div>
-            <h1>Добро пожаловать в LuxMasing</h1>
-            <p className="muted">Тренажёр, который шаг за шагом делает вас лучшей версией себя: ИИ-анализ лица по 478 точкам, персональная ежедневная программа, тренажёр мимики с камерой, академия и ИИ-коуч.</p>
-            <ul className="small muted" style={{ paddingLeft: 18 }}>
-              <li>Только безопасные и доказательные методы</li>
-              <li>Фото обрабатываются на вашем устройстве</li>
-              <li>XP, уровни и серии — чтобы не бросить</li>
-            </ul>
-            <button className="btn primary" onClick={() => setStep(1)}>Начать →</button>
+            <div className="brand" style={{ padding: 0 }}>Lux<span>Masing</span></div>
+            <h1>Лучшая версия вашего лица — по плану, а не наугад</h1>
+            <p className="lead">Анализ пропорций и кожи по фото, ежедневная программа под ваш возраст, тренировки осанки и мимики с камерой, уроки с разбором исследований.</p>
+            <table className="plain">
+              <tbody>
+                <tr><td>Только безопасные методы с доказательной базой</td></tr>
+                <tr><td>Фото обрабатываются на устройстве и никуда не отправляются</td></tr>
+                <tr><td>Результат измеряется: замеры, серии, уровни</td></tr>
+              </tbody>
+            </table>
+            <button className="btn primary" onClick={() => setStep(1)}>Начать</button>
           </div>
         ) : (
           <div className="stack">
             <h2>Расскажите о себе</h2>
+            <p className="small muted">От возраста и пола зависят программа, целевые пропорции и то, какие средства вам можно.</p>
             <ProfileForm value={p} onChange={setP} />
             <div className="row between">
               <button className="btn ghost" onClick={() => setStep(0)}>Назад</button>
-              <button className="btn primary" onClick={finish}>Сделать первый анализ (+50 XP)</button>
+              <button className="btn primary" onClick={finish}>Сделать первый анализ</button>
             </div>
           </div>
         )}

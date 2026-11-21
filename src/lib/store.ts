@@ -25,6 +25,8 @@ export interface ProgressEntry {
 
 export interface BodyEntry { date: number; weightKg?: number; waistCm?: number; sleepH?: number }
 
+export interface SkinEntry { date: number; severity: string; inflamed: number; marks: number; redness: number; evenness: number }
+
 export interface ChatMsg { role: 'user' | 'assistant'; content: string; image?: string }
 
 export interface AppState {
@@ -36,9 +38,10 @@ export interface AppState {
   quizScores: Record<string, number>
   progress: ProgressEntry[]
   body: BodyEntry[]
+  skin: SkinEntry[]
   drills: Record<string, number> // лучший результат упражнений тренажёра
   chat: ChatMsg[]
-  settings: { openrouterKey: string; model: string }
+  settings: { openrouterKey: string; model: string; theme: 'auto' | 'light' | 'dark' }
 }
 
 const KEY = 'luxmasing-state-v1'
@@ -51,9 +54,10 @@ const initial: AppState = {
   quizScores: {},
   progress: [],
   body: [],
+  skin: [],
   drills: {},
   chat: [],
-  settings: { openrouterKey: '', model: 'google/gemini-2.5-flash' },
+  settings: { openrouterKey: '', model: 'google/gemini-2.5-flash', theme: 'auto' },
 }
 
 function load(): AppState {
@@ -89,6 +93,12 @@ export function setState(fn: (s: AppState) => AppState) {
 }
 
 export function getState() { return state }
+
+export function applyTheme() {
+  const t = state.settings.theme
+  if (t === 'auto') delete document.documentElement.dataset.theme
+  else document.documentElement.dataset.theme = t
+}
 
 export function useStore<T>(sel: (s: AppState) => T): T {
   return useSyncExternalStore(

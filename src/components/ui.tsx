@@ -4,17 +4,17 @@ export function Ring({ value, size = 120, stroke = 10, label, sub }: { value: nu
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const v = Math.max(0, Math.min(100, value))
-  const color = v >= 80 ? 'var(--good)' : v >= 60 ? 'var(--gold)' : v >= 40 ? 'var(--mid)' : 'var(--bad)'
+  const color = 'var(--ink)'
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--bg2)" strokeWidth={stroke} fill="none" />
-        <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round"
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--line)" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="butt"
           strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} style={{ transition: 'stroke-dashoffset .6s' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
         <div>
-          <div style={{ fontWeight: 900, fontSize: size * 0.26, lineHeight: 1 }}>{label ?? Math.round(v)}</div>
+          <div style={{ fontFamily: 'var(--mono)', fontWeight: 500, fontSize: size * 0.27, lineHeight: 1, letterSpacing: '-.04em' }}>{label ?? Math.round(v)}</div>
           {sub && <div className="tiny muted" style={{ marginTop: 2 }}>{sub}</div>}
         </div>
       </div>
@@ -42,8 +42,8 @@ export function RichText({ text }: { text: string }) {
     if (line.startsWith('- ')) { list.push(line.slice(2)); continue }
     flush()
     if (line.startsWith('## ')) out.push(<h3 key={out.length}>{line.slice(3)}</h3>)
-    else if (line.startsWith('> ')) out.push(<div className="tip" key={out.length}>💡 {line.slice(2)}</div>)
-    else if (line.startsWith('! ')) out.push(<div className="warn" key={out.length}>⚠️ {line.slice(2)}</div>)
+    else if (line.startsWith('> ')) out.push(<div className="tip" key={out.length}><b>Совет</b>{line.slice(2)}</div>)
+    else if (line.startsWith('! ')) out.push(<div className="warn" key={out.length}><b>Важно</b>{line.slice(2)}</div>)
     else out.push(<p key={out.length}>{line}</p>)
   }
   flush()

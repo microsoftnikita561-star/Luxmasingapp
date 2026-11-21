@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CATEGORIES, tasksFor, type Task } from '../data/protocols'
 import { dayKey, setState, streak, today, useStore } from '../lib/store'
 import { Bar } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 export function toggleTask(t: Task) {
   setState((s) => {
@@ -17,18 +18,20 @@ export function TaskRow({ t, done }: { t: Task; done: boolean }) {
   const c = CATEGORIES[t.cat]
   return (
     <div className={`task ${done ? 'done' : ''}`}>
-      <button className="check" onClick={() => toggleTask(t)} aria-label="Отметить">{done ? '✓' : ''}</button>
+      <button className="check" onClick={() => toggleTask(t)} aria-label="Отметить">{done && <Icon name="check" />}</button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="row between" style={{ gap: 6 }}>
           <span className="ttl" onClick={() => setOpen(!open)} style={{ cursor: 'pointer' }}>{t.title}</span>
-          <span className="pill" style={{ color: c.color }}>{c.icon} +{t.xp}</span>
+          <span className="xp">{c.name} · +{t.xp}</span>
         </div>
         {open && (
           <div className="small muted" style={{ marginTop: 6 }}>
             {t.desc}
             <div className="row" style={{ marginTop: 8 }}>
-              {t.lesson && <a className="btn sm" href={`#academy/${t.lesson}`}>🎓 Урок</a>}
-              {t.drill && <a className="btn sm" href={`#trainer/${t.drill}`}>🎯 Тренажёр</a>}
+              {t.lesson && <a className="btn sm ghost" href={`#academy/${t.lesson}`}>Урок</a>}
+              {t.drill && <a className="btn sm ghost" href={`#trainer/face/${t.drill}`}>Упражнение</a>}
+              {t.id === 'posture' && <a className="btn sm ghost" href="#trainer/posture">Показать упражнения</a>}
+              {t.id === 'train' && <a className="btn sm ghost" href="#trainer/full">Показать упражнения</a>}
             </div>
           </div>
         )}
@@ -57,17 +60,17 @@ export default function Program() {
 
   return (
     <div className="stack">
-      <h1>Ежедневная программа</h1>
+      <div><div className="kicker">Программа</div><h1>План на день</h1></div>
       <div className="grid g2">
         <div className="card">
-          <div className="row between"><b>Сегодня выполнено</b><span>{Math.round(pct)}%</span></div>
-          <div style={{ marginTop: 10 }}><Bar value={pct} cls="good" /></div>
-          <p className="small muted mt">🔥 Серия: <b style={{ color: 'var(--gold)' }}>{streak(doneMap)}</b> дн. Нажмите на название задачи — откроется объяснение и урок.</p>
+          <div className="row between"><span className="label" style={{ margin: 0 }}>Сегодня выполнено</span><span className="num">{Math.round(pct)}%</span></div>
+          <div style={{ marginTop: 10 }}><Bar value={pct} /></div>
+          <p className="small muted mt">Серия: <b className="num" style={{ color: 'var(--ink)' }}>{streak(doneMap)}</b> дн. Нажмите на название задачи — откроется объяснение.</p>
         </div>
         <div className="card">
-          <b>Последние 5 недель</b>
+          <div className="label">Последние 5 недель</div>
           <div className="heat" style={{ marginTop: 10 }}>
-            {days.map((x) => <i key={x.key} title={x.key} style={{ background: x.v ? `rgba(89, 212, 155, ${0.2 + x.v * 0.8})` : undefined }} />)}
+            {days.map((x) => <i key={x.key} title={x.key} style={{ background: x.v ? `color-mix(in srgb, var(--ink) ${Math.round(20 + x.v * 80)}%, var(--sunk))` : undefined }} />)}
           </div>
         </div>
       </div>
@@ -76,7 +79,7 @@ export default function Program() {
         if (!list.length) return null
         return (
           <div key={g} className="card">
-            <h3>{g === 'Утро' ? '🌅' : g === 'День' ? '☀️' : g === 'Вечер' ? '🌙' : '🔁'} {g}</h3>
+            <div className="kicker">{g}</div>
             {list.map((t) => <TaskRow key={t.id} t={t} done={done.includes(t.id)} />)}
           </div>
         )

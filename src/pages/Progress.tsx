@@ -22,14 +22,14 @@ export default function Progress() {
 
   return (
     <div className="stack">
-      <h1>Прогресс</h1>
+      <div><div className="kicker">Прогресс</div><h1>Замеры во времени</h1></div>
       <div className="card">
         <h3>Гармония и симметрия по замерам</h3>
         <LineChart series={[
-          { name: 'Гармония', color: '#e6c27a', points: progress.map((p) => ({ x: p.date, y: p.analysis.harmony })) },
-          { name: 'Симметрия', color: '#8f7bff', points: progress.map((p) => ({ x: p.date, y: p.analysis.symmetry })) },
+          { name: 'Гармония', color: 'var(--ink)', points: progress.map((p) => ({ x: p.date, y: p.analysis.harmony })) },
+          { name: 'Симметрия', color: 'var(--muted)', points: progress.map((p) => ({ x: p.date, y: p.analysis.symmetry })) },
         ]} />
-        <div className="row small"><span style={{ color: '#e6c27a' }}>● Гармония</span><span style={{ color: '#8f7bff' }}>● Симметрия</span></div>
+        <div className="row small"><span style={{ color: 'var(--ink)' }}>● Гармония</span><span style={{ color: 'var(--muted)' }}>● Симметрия</span></div>
         <p className="tiny muted">Пропорции костей почти не меняются — колебания чаще отражают ракурс, свет, отёки и процент жира. Снимайте в одинаковых условиях.</p>
       </div>
 
@@ -57,7 +57,7 @@ export default function Progress() {
             <img src={a.thumb} style={{ width: '100%', borderRadius: 12 }} alt="" />
             <img src={b.thumb} style={{ width: '100%', borderRadius: 12 }} alt="" />
           </div>
-          <table className="small" style={{ width: '100%', marginTop: 12, borderCollapse: 'collapse' }}>
+          <table className="plain mt" >
             <tbody>
               {[['Гармония', a.analysis.harmony, b.analysis.harmony], ...a.analysis.metrics.map((m) => {
                 const mb = b.analysis.metrics.find((x) => x.id === m.id)
@@ -91,9 +91,9 @@ export default function Progress() {
           <div style={{ display: 'flex', alignItems: 'flex-end' }}><button className="btn primary" style={{ width: '100%' }} onClick={addBody}>Записать</button></div>
         </div>
         <div className="grid g3 mt">
-          <div><b className="small">Вес</b><LineChart height={120} series={[{ name: 'Вес', color: '#7cc4ff', points: body.filter((x) => x.weightKg).map((x) => ({ x: x.date, y: x.weightKg! })) }]} /></div>
-          <div><b className="small">Талия</b><LineChart height={120} series={[{ name: 'Талия', color: '#f6a5c0', points: body.filter((x) => x.waistCm).map((x) => ({ x: x.date, y: x.waistCm! })) }]} /></div>
-          <div><b className="small">Сон</b><LineChart height={120} series={[{ name: 'Сон', color: '#8fe3c0', points: body.filter((x) => x.sleepH).map((x) => ({ x: x.date, y: x.sleepH! })) }]} /></div>
+          <div><b className="small">Вес</b><LineChart height={120} series={[{ name: 'Вес', color: 'var(--ink)', points: body.filter((x) => x.weightKg).map((x) => ({ x: x.date, y: x.weightKg! })) }]} /></div>
+          <div><b className="small">Талия</b><LineChart height={120} series={[{ name: 'Талия', color: 'var(--ink)', points: body.filter((x) => x.waistCm).map((x) => ({ x: x.date, y: x.waistCm! })) }]} /></div>
+          <div><b className="small">Сон</b><LineChart height={120} series={[{ name: 'Сон', color: 'var(--ink)', points: body.filter((x) => x.sleepH).map((x) => ({ x: x.date, y: x.sleepH! })) }]} /></div>
         </div>
       </div>
       {progress.length > 0 && <div className="tiny muted">Последний замер: <span className={`pill ${scoreClass(progress[progress.length - 1].analysis.harmony)}`}>{progress[progress.length - 1].analysis.harmony}</span></div>}
