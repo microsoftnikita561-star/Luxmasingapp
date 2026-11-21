@@ -193,7 +193,7 @@ export function gradeAcne(spots: Spot[]): { severity: Severity; inflamed: number
   const byZone: Record<Zone, number> = { forehead: 0, cheekL: 0, cheekR: 0, nose: 0, chin: 0 }
   let inflamed = 0, marks = 0
   for (const s of spots) { byZone[s.zone]++; if (s.kind === 'inflamed') inflamed++; else marks++ }
-  const score = inflamed + marks * 0.4
+  const score = inflamed + marks * 0.2
   const severity: Severity = score < 3 ? 'clear' : score < 11 ? 'mild' : score < 26 ? 'moderate' : 'severe'
   return { severity, inflamed, marks, byZone }
 }
