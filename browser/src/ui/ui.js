@@ -12,7 +12,11 @@ const ICONS = {
   globe: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
   star: svg('<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>'),
   shield: svg('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
-  menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  menu: svg('<circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/>'),
+  folder: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  more: svg('<path d="M6 7l5 5-5 5M13 7l5 5-5 5"/>'),
+  up: svg('<path d="M6 15l6-6 6 6"/>'),
+  down: svg('<path d="M6 9l6 6 6-6"/>'),
   search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   moon: svg('<path d="M20 15A8 8 0 1 1 9 4a6 6 0 0 0 11 11z"/>'),
@@ -26,6 +30,10 @@ $('reload').innerHTML = ICONS.reload;
 $('star').innerHTML = ICONS.star;
 $('shield').querySelector('span').innerHTML = ICONS.shield;
 $('menubtn').innerHTML = ICONS.menu;
+$('bmmore').innerHTML = ICONS.more;
+$('findprev').innerHTML = ICONS.up;
+$('findnext').innerHTML = ICONS.down;
+$('findclose').innerHTML = ICONS.x;
 
 let state = { tabs: [], settings: {} };
 let editing = false;
@@ -41,6 +49,102 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
+
+function blankIcon() {
+  const d = el('div', 'fav blank');
+  d.innerHTML = ICONS.globe;
+  return d;
+}
+
+// ---------- bookmarks bar ----------
+let barKey = '';
+let barOverflowFrom = -1;
+function renderBar() {
+  const items = state.bar || [];
+  $('bmbar').hidden = !items.length;
+  const key = JSON.stringify(items);
+  if (key !== barKey) {
+    barKey = key;
+    const box = $('bmitems');
+    box.textContent = '';
+    items.forEach((b, i) => {
+      const btn = el('button', 'bm');
+      btn.title = b.folder ? b.title : `${b.title}\n${b.url}`;
+      if (b.icon && !b.folder) {
+        const img = el('img');
+        img.src = b.icon;
+        img.onerror = () => {
+          const ic = el('span', 'ic');
+          ic.innerHTML = ICONS.globe;
+          img.replaceWith(ic);
+        };
+        btn.append(img);
+      } else {
+        const ic = el('span', 'ic');
+        ic.innerHTML = b.folder ? ICONS.folder : ICONS.globe;
+        btn.append(ic);
+      }
+      if (b.title) btn.append(el('span', null, b.title));
+      const at = () => {
+        const r = btn.getBoundingClientRect();
+        return [r.left, r.bottom];
+      };
+      btn.onclick = (e) => lux.send('bar-click', i, ...at(), e.ctrlKey || e.metaKey);
+      btn.onauxclick = (e) => {
+        if (e.button === 1) lux.send('bar-click', i, ...at(), true);
+      };
+      btn.oncontextmenu = (e) => {
+        e.preventDefault();
+        lux.send('bar-context', i, e.clientX, e.clientY);
+      };
+      btn.onmouseenter = () => b.url && lux.send('preconnect', b.url);
+      box.append(btn);
+    });
+  }
+  measureBar();
+}
+function measureBar() {
+  const kids = [...$('bmitems').children];
+  barOverflowFrom = kids.findIndex((k) => k.offsetTop > kids[0].offsetTop);
+  $('bmmore').hidden = barOverflowFrom < 0;
+}
+window.addEventListener('resize', measureBar);
+$('bmmore').onclick = () => {
+  const r = $('bmmore').getBoundingClientRect();
+  lux.send('bar-overflow', barOverflowFrom, r.left, r.bottom);
+};
+
+// ---------- find in page ----------
+const findText = $('findtext');
+let lastFind = '';
+function openFind() {
+  toggleMenu(false);
+  $('find').hidden = false;
+  findText.focus();
+  findText.select();
+  if (findText.value) doFind(true, true);
+}
+function closeFind() {
+  if ($('find').hidden) return;
+  $('find').hidden = true;
+  $('findcount').textContent = '';
+  lastFind = '';
+  lux.send('find-stop');
+}
+function doFind(forward, fresh) {
+  const text = findText.value;
+  if (!text) $('findcount').textContent = '';
+  lux.send('find', text, forward, fresh || text !== lastFind);
+  lastFind = text;
+}
+findText.addEventListener('input', () => doFind(true, true));
+findText.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doFind(!e.shiftKey, false);
+  else if (e.key === 'Escape') closeFind();
+});
+$('findnext').onclick = () => doFind(true, false);
+$('findprev').onclick = () => doFind(false, false);
+$('findclose').onclick = closeFind;
 
 // ---------- tabs ----------
 let dragId = null;
@@ -58,9 +162,9 @@ function renderTabs() {
     else if (t.favicon) {
       const img = el('img', 'fav');
       img.src = t.favicon;
-      img.onerror = () => img.replaceWith(el('div', 'fav blank'));
+      img.onerror = () => img.replaceWith(blankIcon());
       tab.append(img);
-    } else tab.append(el('div', 'fav blank'));
+    } else tab.append(blankIcon());
     tab.append(el('div', 'title', t.title));
     if (t.audible) {
       const b = el('span', 'badge');
@@ -111,8 +215,14 @@ $('tabstrip').ondblclick = (e) => {
 };
 
 // ---------- toolbar ----------
+let shownTab = null;
 function render() {
   renderTabs();
+  renderBar();
+  if (shownTab !== state.activeId) {
+    shownTab = state.activeId;
+    closeFind();
+  }
   $('back').disabled = !state.canBack;
   $('forward').disabled = !state.canForward;
   $('reload').innerHTML = state.loading ? ICONS.stop : ICONS.reload;
@@ -286,6 +396,16 @@ for (const input of document.querySelectorAll('[data-key]')) {
     lux.send('set', input.dataset.key, v);
   });
 }
+const command = (id, fn) => {
+  $(id).onclick = () => {
+    toggleMenu(false);
+    fn();
+  };
+};
+command('c-newtab', () => lux.send('new-tab'));
+command('c-history', () => lux.send('history'));
+command('c-find', openFind);
+command('c-import', () => lux.send('import'));
 $('sleepall').onclick = () => {
   lux.send('sleep-all');
   setTimeout(fillMenu, 600);
@@ -312,5 +432,9 @@ lux.on('state', (st) => {
 lux.on('focus-address', () => {
   toggleMenu(false);
   focusPending = true; // main sends fresh state right after this
+});
+lux.on('open-find', openFind);
+lux.on('found', (r) => {
+  $('findcount').textContent = findText.value ? `${r.current}/${r.total}` : '';
 });
 lux.send('ready');

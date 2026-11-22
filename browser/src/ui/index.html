@@ -21,12 +21,26 @@
         <input id="address" spellcheck="false" autocomplete="off" placeholder="Поиск или адрес сайта">
         <button type="button" id="star" class="icon small" title="В закладки (Ctrl+D)"></button>
       </form>
+      <div id="find" hidden>
+        <input id="findtext" spellcheck="false" placeholder="Найти на странице">
+        <span id="findcount"></span>
+        <button id="findprev" class="icon small" title="Предыдущее (Shift+Enter)"></button>
+        <button id="findnext" class="icon small" title="Следующее (Enter)"></button>
+        <button id="findclose" class="icon small" title="Закрыть (Esc)"></button>
+      </div>
       <button id="shield" title="Заблокировано на этой странице"><span class="icon small"></span><b id="blocked">0</b></button>
-      <button id="menubtn" class="icon" title="Меню"></button>
+      <button id="menubtn" class="icon" title="Настройка и управление"></button>
     </div>
+    <div id="bmbar" hidden><div id="bmitems"></div><button id="bmmore" class="icon small" title="Остальные закладки" hidden></button></div>
   </div>
   <div id="suggest" hidden></div>
   <div id="menu" hidden>
+    <button class="row cmd" id="c-newtab">Новая вкладка<kbd>Ctrl+T</kbd></button>
+    <button class="row cmd" id="c-history">История<kbd>Ctrl+H</kbd></button>
+    <button class="row cmd" id="c-find">Найти на странице<kbd>Ctrl+F</kbd></button>
+    <button class="row cmd" id="c-import">Перенести закладки и историю из Chrome…</button>
+    <label class="row"><input type="checkbox" data-key="showBookmarksBar"> Показывать панель закладок<kbd>Ctrl+Shift+B</kbd></label>
+    <hr>
     <div class="stats">
       <div><b id="m-mem">—</b><span>памяти занято</span></div>
       <div><b id="m-tabs">—</b><span>вкладок / спят</span></div>

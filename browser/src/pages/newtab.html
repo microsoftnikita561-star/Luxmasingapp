@@ -5,23 +5,23 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
   <title>Новая вкладка</title>
   <style>
-    :root { --bg: #1b1c20; --card: #26272c; --text: #e9e9ee; --muted: #9a9ba5; --accent: #8b7cff; --good: #4fd18b; color-scheme: dark; }
-    @media (prefers-color-scheme: light) {
-      :root { --bg: #f4f5f7; --card: #ffffff; --text: #1d1e22; --muted: #686a73; --accent: #5b47f5; --good: #138a4a; color-scheme: light; }
+    :root { --bg: #ffffff; --card: #f1f3f4; --text: #202124; --muted: #5f6368; --accent: #1a73e8; --good: #188038; color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #35363a; --card: #202124; --text: #e8eaed; --muted: #9aa0a6; --accent: #8ab4f8; --good: #81c995; color-scheme: dark; }
     }
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 12vh 16px 40px; }
     h1 { margin: 0 0 22px; font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
     h1 span { color: var(--accent); }
     form { width: min(600px, 100%); }
-    input { width: 100%; height: 48px; border-radius: 24px; border: 1px solid transparent; background: var(--card); color: var(--text); padding: 0 22px; font: inherit; font-size: 16px; outline: 0; box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+    input { width: 100%; height: 48px; border-radius: 24px; border: 1px solid transparent; background: var(--card); color: var(--text); padding: 0 22px; font: inherit; font-size: 16px; outline: 0; box-shadow: none; }
     input:focus { border-color: var(--accent); }
     .stat { margin-top: 18px; color: var(--muted); font-size: 13px; }
     .stat b { color: var(--good); }
-    .grid { margin-top: 34px; width: min(760px, 100%); display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
-    .grid a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px; border-radius: 12px; background: var(--card); color: var(--text); text-decoration: none; min-width: 0; }
-    .grid a:hover { outline: 2px solid var(--accent); }
-    .grid .l { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 18px; color: #fff; }
+    .grid { margin-top: 34px; width: min(600px, 100%); display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .grid a { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 6px; border-radius: 8px; color: var(--text); text-decoration: none; min-width: 0; }
+    .grid a:hover { background: var(--card); }
+    .grid .l { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 20px; color: #fff; }
     .grid .n { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hint { margin-top: 30px; color: var(--muted); font-size: 12px; text-align: center; }
   </style>
@@ -31,7 +31,7 @@
   <form id="f"><input id="q" placeholder="Поиск" autocomplete="off"></form>
   <div class="stat" id="stat"></div>
   <div class="grid" id="grid"></div>
-  <div class="hint" id="hint">Добавляйте сайты в закладки звёздочкой в адресной строке (Ctrl+D) — они появятся здесь.</div>
+  <div class="hint" id="hint">Здесь появятся сайты, которые вы открываете чаще всего. Перенести закладки и историю из Chrome можно в меню ⋮.</div>
   <script>
     let searchUrl = 'https://duckduckgo.com/?q=%s';
     document.getElementById('f').addEventListener('submit', (e) => {
@@ -52,7 +52,7 @@
       }
       const grid = document.getElementById('grid');
       grid.textContent = '';
-      for (const bm of data.bookmarks) {
+      for (const bm of data.shortcuts) {
         let host = bm.url;
         try { host = new URL(bm.url).hostname.replace(/^www\./, ''); } catch {}
         const a = document.createElement('a');
@@ -70,7 +70,7 @@
         a.append(l, n);
         grid.append(a);
       }
-      document.getElementById('hint').hidden = data.bookmarks.length > 0;
+      document.getElementById('hint').hidden = data.shortcuts.length > 0;
     };
   </script>
 </body>

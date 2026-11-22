@@ -1,13 +1,16 @@
 const {
-  app, BaseWindow, WebContentsView, session, ipcMain, Menu, clipboard, dialog, protocol, net,
+  app, BaseWindow, WebContentsView, session, ipcMain, Menu, clipboard, dialog, protocol, net, nativeTheme,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { pathToFileURL } = require('node:url');
 const Store = require('./store');
 const privacy = require('./privacy');
+const chromeImport = require('./chrome-import');
 
-const TOP = 80; // height of the tab strip + toolbar
+const BAR = 80; // tab strip + toolbar
+const BOOKMARKS_BAR = 32;
+const HISTORY_LIMIT = 3000;
 const NEWTAB = 'lux://newtab/';
 
 app.setName('LuxBrowser');
@@ -25,6 +28,8 @@ const settings = new Store(dataDir, 'settings', {
   clearOnExit: false,
   restoreTabs: true,
   ecoMode: false, // fewer renderer processes (needs restart)
+  showBookmarksBar: true,
+  firstRun: true,
 });
 const s = settings.data;
 const history = new Store(dataDir, 'history', []);
@@ -76,9 +81,29 @@ const permissionMemory = new Map();
 const activeTab = () => tabs.find((t) => t.id === activeId);
 const searchUrl = (q) => (privacy.SEARCH_ENGINES[s.search] || privacy.SEARCH_ENGINES.duckduckgo).url.replace('%s', encodeURIComponent(q));
 
+// ---------- bookmarks (a tree: { url, title, icon } or { title, children }) ----------
+function* walkBookmarks(nodes = bookmarks.data) {
+  for (const n of nodes) {
+    if (n.children) yield* walkBookmarks(n.children);
+    else yield n;
+  }
+}
+function findBookmark(url) {
+  for (const b of walkBookmarks()) if (b.url === url) return b;
+  return null;
+}
+function removeBookmark(url, nodes = bookmarks.data) {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    if (nodes[i].children) removeBookmark(url, nodes[i].children);
+    else if (nodes[i].url === url) nodes.splice(i, 1);
+  }
+}
+
 // ---------- layout ----------
+const topHeight = () => BAR + (s.showBookmarksBar && bookmarks.data.length ? BOOKMARKS_BAR : 0);
 function layout() {
   if (!win) return;
+  const TOP = topHeight();
   const { width, height } = win.getContentBounds();
   ui.setBounds(fullscreen ? { x: 0, y: 0, width: 0, height: 0 } : { x: 0, y: 0, width, height: overlay ? height : TOP });
   const t = activeTab();
@@ -114,13 +139,16 @@ function push() {
         audible: x.audible,
       })),
       activeId,
-      url: url.startsWith(NEWTAB) ? '' : url,
+      url: url.startsWith(NEWTAB) ? '' : url.replace(/^(lux:\/\/\w+)\/$/, '$1'),
       secure: url.startsWith('https://') || url.startsWith('lux:'),
       canBack: !!(wc && wc.navigationHistory.canGoBack()),
       canForward: !!(wc && wc.navigationHistory.canGoForward()),
       loading: !!(t && t.loading),
       blocked: t ? t.blocked : 0,
-      bookmarked: bookmarks.data.some((b) => b.url === url),
+      bookmarked: !!findBookmark(url),
+      bar: s.showBookmarksBar
+        ? bookmarks.data.map((b) => ({ title: b.title || '', url: b.url || '', icon: b.icon || '', folder: !!b.children }))
+        : [],
       settings: s,
       engines: Object.fromEntries(Object.entries(privacy.SEARCH_ENGINES).map(([k, v]) => [k, v.name])),
     });
@@ -174,6 +202,11 @@ function createView(tab) {
   });
   wc.on('page-favicon-updated', (_e, icons) => {
     tab.favicon = icons[0] || '';
+    const bm = tab.favicon && findBookmark(wc.getURL());
+    if (bm && bm.icon !== tab.favicon) {
+      bm.icon = tab.favicon;
+      bookmarks.save();
+    }
     push();
   });
   wc.on('did-start-loading', () => {
@@ -211,10 +244,21 @@ function createView(tab) {
     tab.audible = e.audible;
     push();
   });
+  // hovering a link warms up the connection to its server, so the click loads faster
+  wc.on('update-target-url', (_e, url) => {
+    if (url) preconnect(url);
+  });
+  wc.on('found-in-page', (_e, r) => {
+    if (tab.id === activeId) ui.webContents.send('found', { current: r.activeMatchOrdinal, total: r.matches });
+  });
   wc.on('dom-ready', () => {
+    if (wc.getURL().startsWith('lux://history')) {
+      const rows = history.data.map((h) => [h.url, h.title, h.time]);
+      wc.executeJavaScript(`window.renderLux && window.renderLux(${JSON.stringify(rows)})`).catch(() => {});
+    }
     if (wc.getURL().startsWith(NEWTAB)) {
       const data = {
-        bookmarks: bookmarks.data.slice(0, 24),
+        shortcuts: shortcuts(),
         blockedTotal: stats.data.blocked,
         searchUrl: (privacy.SEARCH_ENGINES[s.search] || privacy.SEARCH_ENGINES.duckduckgo).url,
         engine: (privacy.SEARCH_ENGINES[s.search] || privacy.SEARCH_ENGINES.duckduckgo).name,
@@ -366,6 +410,7 @@ function navigate(input) {
 }
 
 function focusAddress() {
+  preconnect(searchUrl('x')); // the next thing typed is most likely a search
   ui.webContents.focus();
   ui.webContents.send('focus-address');
   push();
@@ -378,7 +423,7 @@ function addHistory(url, title) {
   const visits = old >= 0 ? list[old].visits + 1 : 1;
   if (old >= 0) list.splice(old, 1);
   list.unshift({ url, title: title || url, visits, time: Date.now() });
-  if (list.length > 2000) list.length = 2000;
+  if (list.length > HISTORY_LIMIT) list.length = HISTORY_LIMIT;
   history.save();
 }
 
@@ -387,11 +432,112 @@ function toggleBookmark() {
   if (!t) return;
   const url = t.view ? t.view.webContents.getURL() : t.url;
   if (!/^https?:/.test(url)) return;
-  const i = bookmarks.data.findIndex((b) => b.url === url);
-  if (i >= 0) bookmarks.data.splice(i, 1);
-  else bookmarks.data.unshift({ url, title: t.title || url });
+  if (findBookmark(url)) removeBookmark(url);
+  else bookmarks.data.push({ url, title: t.title || url, icon: t.favicon || '' });
   bookmarks.save();
+  layout();
   push();
+}
+
+// Tiles on the new tab page: most visited sites, like in Chrome.
+function shortcuts() {
+  const sites = new Map();
+  for (const h of history.data) {
+    let u;
+    try {
+      u = new URL(h.url);
+    } catch {
+      continue;
+    }
+    const site = sites.get(u.origin) || { url: `${u.origin}/`, title: u.hostname.replace(/^www\./, ''), visits: 0 };
+    site.visits += h.visits || 1;
+    sites.set(u.origin, site);
+  }
+  const top = [...sites.values()].sort((a, b) => b.visits - a.visits).slice(0, 10);
+  for (const b of walkBookmarks()) {
+    if (top.length >= 10) break;
+    if (!top.some((x) => x.url === b.url)) top.push({ url: b.url, title: b.title });
+  }
+  return top;
+}
+
+const short = (text, n = 60) => (text.length > n ? `${text.slice(0, n)}…` : text);
+function bookmarkMenuItems(nodes) {
+  if (!nodes.length) return [{ label: '(пусто)', enabled: false }];
+  return nodes.slice(0, 300).map((n) =>
+    n.children
+      ? { label: short(n.title || 'Папка'), submenu: bookmarkMenuItems(n.children) }
+      : {
+          label: short(n.title || n.url),
+          click: (_item, _win, ev) => (ev && (ev.ctrlKey || ev.metaKey) ? openTab(n.url, { background: true }) : navigate(n.url)),
+        },
+  );
+}
+function popupAt(template, x, y) {
+  Menu.buildFromTemplate(template).popup({ window: win, x: Math.round(x), y: Math.round(y) });
+}
+
+// ---------- import from Google Chrome ----------
+async function importFlow(auto) {
+  const sources = chromeImport.findSources().slice(0, 6);
+  if (!sources.length) {
+    if (!auto) {
+      await dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Перенос данных',
+        message: 'Google Chrome на этом компьютере не найден',
+        detail: 'Переносить можно из Chrome, Яндекс Браузера, Edge и Brave, установленных у этого же пользователя.',
+      });
+    }
+    return;
+  }
+  const buttons = [...sources.map((x) => x.label), auto ? 'Не сейчас' : 'Отмена'];
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'question',
+    title: 'Перенос данных',
+    message: 'Перенести закладки и историю?',
+    detail: 'Выберите, откуда. Это занимает пару секунд, исходный браузер закрывать не нужно. Позже перенос доступен в меню ⋮.',
+    buttons,
+    defaultId: 0,
+    cancelId: buttons.length - 1,
+  });
+  if (response >= sources.length) return;
+  const got = chromeImport.importFrom(sources[response], app.getPath('temp'), HISTORY_LIMIT);
+
+  let addedBookmarks = 0;
+  const count = (nodes) => [...walkBookmarks(nodes)].length;
+  for (const node of got.bookmarks.bar) {
+    const dup = node.children
+      ? bookmarks.data.some((b) => b.children && b.title === node.title)
+      : bookmarks.data.some((b) => b.url === node.url);
+    if (dup) continue;
+    bookmarks.data.push(node);
+    addedBookmarks += count([node]);
+  }
+  if (got.bookmarks.other.length && !bookmarks.data.some((b) => b.children && b.title === 'Другие закладки')) {
+    bookmarks.data.push({ title: 'Другие закладки', children: got.bookmarks.other });
+    addedBookmarks += count(got.bookmarks.other);
+  }
+  bookmarks.flush();
+
+  const known = new Set(history.data.map((h) => h.url));
+  const fresh = got.history.filter((h) => !known.has(h.url));
+  history.data.push(...fresh);
+  history.data.sort((a, b) => b.time - a.time);
+  if (history.data.length > HISTORY_LIMIT) history.data.length = HISTORY_LIMIT;
+  history.flush();
+
+  layout();
+  push();
+  for (const t of tabs) {
+    if (t.view && t.view.webContents.getURL().startsWith(NEWTAB)) t.view.webContents.reload();
+  }
+  await dialog.showMessageBox(win, {
+    type: 'info',
+    title: 'Перенос данных',
+    message: `Готово: закладок — ${addedBookmarks}, сайтов из истории — ${fresh.length}`,
+    detail: 'Пароли и открытые входы на сайты не переносятся: Chrome шифрует их так, что другая программа прочитать не может.',
+  });
 }
 
 function suggest(q) {
@@ -406,7 +552,7 @@ function suggest(q) {
       out.push({ url: item.url, title: item.title, kind });
     }
   };
-  bookmarks.data.forEach((b) => add(b, 'bookmark'));
+  for (const b of walkBookmarks()) add(b, 'bookmark');
   [...history.data].sort((a, b) => b.visits - a.visits).forEach((h) => add(h, 'history'));
   // warm up the connection to the most likely destination while the user is still typing
   const guess = out[0] ? out[0].url : privacy.toUrl(text, s.search);
@@ -496,7 +642,13 @@ function zoom(delta) {
 function onKeys(e, input) {
   if (input.type !== 'keyDown') return;
   const mod = input.control || input.meta;
-  const k = (input.key || '').toLowerCase();
+  // use the physical key so shortcuts also work with the Russian layout switched on
+  const code = input.code || '';
+  let k = (input.key || '').toLowerCase();
+  if (code.startsWith('Key')) k = code.slice(3).toLowerCase();
+  else if (code.startsWith('Digit')) k = code.slice(5);
+  else if (code === 'Equal' || code === 'NumpadAdd') k = '=';
+  else if (code === 'Minus' || code === 'NumpadSubtract') k = '-';
   const t = activeTab();
   const wc = t && t.view ? t.view.webContents : null;
   let handled = true;
@@ -525,6 +677,16 @@ function onKeys(e, input) {
   else if (mod && k === '-') zoom(-0.5);
   else if (mod && k === '0') zoom(0);
   else if (mod && k === 'd') toggleBookmark();
+  else if (mod && k === 'h') openTab('lux://history/');
+  else if (mod && k === 'f') {
+    ui.webContents.focus();
+    ui.webContents.send('open-find');
+  } else if (mod && input.shift && k === 'b') {
+    s.showBookmarksBar = !s.showBookmarksBar;
+    settings.save();
+    layout();
+    push();
+  }
   else if (input.key === 'F12' || (mod && input.shift && k === 'i')) {
     if (wc) wc.toggleDevTools();
   } else if (input.key === 'F11') {
@@ -569,7 +731,47 @@ function wireIpc() {
     s[key] = value;
     settings.save();
     applySettings();
+    layout();
     push();
+  });
+  on('history', () => openTab('lux://history/'));
+  on('import', () => importFlow(false));
+  on('bar-click', (index, x, y, newTab) => {
+    const node = bookmarks.data[index];
+    if (!node) return;
+    if (node.children) popupAt(bookmarkMenuItems(node.children), x, y);
+    else if (newTab) openTab(node.url, { background: true });
+    else navigate(node.url);
+  });
+  on('bar-overflow', (from, x, y) => popupAt(bookmarkMenuItems(bookmarks.data.slice(from)), x, y));
+  on('bar-context', (index, x, y) => {
+    const node = bookmarks.data[index];
+    if (!node) return;
+    const items = [];
+    if (!node.children) items.push({ label: 'Открыть в новой вкладке', click: () => openTab(node.url) });
+    items.push({
+      label: node.children ? 'Удалить папку' : 'Удалить закладку',
+      click: () => {
+        const i = bookmarks.data.indexOf(node);
+        if (i >= 0) bookmarks.data.splice(i, 1);
+        bookmarks.save();
+        layout();
+        push();
+      },
+    });
+    popupAt(items, x, y);
+  });
+  on('find', (text, forward, fresh) => {
+    const wc = activeTab()?.view?.webContents;
+    if (!wc) return;
+    if (!text) wc.stopFindInPage('clearSelection');
+    else wc.findInPage(String(text), { forward: !!forward, findNext: !!fresh });
+  });
+  on('find-stop', () => {
+    const wc = activeTab()?.view?.webContents;
+    if (!wc) return;
+    wc.stopFindInPage('keepSelection');
+    wc.focus();
   });
   handle('suggest', (q) => suggest(q));
   handle('stats', () => ({
@@ -605,7 +807,9 @@ function setupSession() {
 
   tabSession.protocol.handle('lux', (req) => {
     const { host } = new URL(req.url);
-    if (host === 'newtab') return net.fetch(pathToFileURL(path.join(__dirname, 'pages', 'newtab.html')).toString());
+    if (host === 'newtab' || host === 'history') {
+      return net.fetch(pathToFileURL(path.join(__dirname, 'pages', `${host}.html`)).toString());
+    }
     return new Response('Not found', { status: 404 });
   });
 
@@ -693,7 +897,7 @@ async function setupBlocker() {
 
 // ---------- window ----------
 function createWindow() {
-  win = new BaseWindow({ width: 1280, height: 820, minWidth: 480, minHeight: 320, backgroundColor: '#1b1c20', title: 'LuxBrowser', icon: path.join(__dirname, '..', 'build', 'icon.png') });
+  win = new BaseWindow({ width: 1280, height: 820, minWidth: 480, minHeight: 320, backgroundColor: nativeTheme.shouldUseDarkColors ? '#202124' : '#dee1e6', title: 'LuxBrowser', icon: path.join(__dirname, '..', 'build', 'icon.png') });
   ui = new WebContentsView({
     webPreferences: {
       partition: 'ui', // separate from websites, no cookies shared
@@ -736,6 +940,11 @@ function createWindow() {
   startUrls.forEach((u) => openTab(u));
   if (!tabs.length) openTab();
   layout();
+  if (s.firstRun) {
+    s.firstRun = false;
+    settings.save();
+    ui.webContents.once('did-finish-load', () => importFlow(true));
+  }
 }
 
 function saveSession() {
