@@ -29,6 +29,8 @@ const settings = new Store(dataDir, 'settings', {
   restoreTabs: true,
   ecoMode: false, // fewer renderer processes (needs restart)
   showBookmarksBar: true,
+  stealth: true, // hide the ad blocker from sites
+  allowSites: [], // sites where blocking is switched off
   firstRun: true,
 });
 const s = settings.data;
@@ -60,6 +62,8 @@ if (s.ecoMode) sw.appendSwitch('renderer-process-limit', '4');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'lux', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // stand-in responses for blocked ad scripts (Chromium refuses redirects to data: URLs)
+  { scheme: 'luxres', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } },
 ]);
 
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -70,6 +74,7 @@ let ui; // WebContentsView with the browser chrome
 let tabSession;
 let blocker = null;
 let blockerOn = false;
+let stealthPreload = null;
 let overlay = false;
 let fullscreen = false;
 let nextId = 1;
@@ -96,6 +101,15 @@ function removeBookmark(url, nodes = bookmarks.data) {
   for (let i = nodes.length - 1; i >= 0; i--) {
     if (nodes[i].children) removeBookmark(url, nodes[i].children);
     else if (nodes[i].url === url) nodes.splice(i, 1);
+  }
+}
+
+function siteName(url) {
+  try {
+    const u = new URL(url);
+    return /^https?:$/.test(u.protocol) ? privacy.siteOf(u.hostname) : '';
+  } catch {
+    return '';
   }
 }
 
@@ -150,6 +164,8 @@ function push() {
         ? bookmarks.data.map((b) => ({ title: b.title || '', url: b.url || '', icon: b.icon || '', folder: !!b.children }))
         : [],
       settings: s,
+      site: siteName(url),
+      siteAllowed: siteAllowed(url),
       engines: Object.fromEntries(Object.entries(privacy.SEARCH_ENGINES).map(([k, v]) => [k, v.name])),
     });
   });
@@ -734,6 +750,18 @@ function wireIpc() {
     layout();
     push();
   });
+  on('toggle-site', () => {
+    const t = activeTab();
+    const wc = t && t.view ? t.view.webContents : null;
+    const site = wc ? siteName(wc.getURL()) : '';
+    if (!site) return;
+    const i = s.allowSites.indexOf(site);
+    if (i >= 0) s.allowSites.splice(i, 1);
+    else s.allowSites.push(site);
+    settings.save();
+    wc.reload();
+    push();
+  });
   on('history', () => openTab('lux://history/'));
   on('import', () => importFlow(false));
   on('bar-click', (index, x, y, newTab) => {
@@ -793,6 +821,13 @@ function applySettings() {
     if (!s.blockAds && blockerOn) blocker.disableBlockingInSession(tabSession);
     blockerOn = s.blockAds;
   }
+  const wantShield = s.blockAds && s.stealth;
+  if (wantShield && !stealthPreload) {
+    stealthPreload = tabSession.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'stealth-preload.js') });
+  } else if (!wantShield && stealthPreload) {
+    tabSession.unregisterPreloadScript(stealthPreload);
+    stealthPreload = null;
+  }
   const dns = privacy.DNS_SERVERS[s.secureDns];
   app.configureHostResolver(
     dns ? { secureDnsMode: 'automatic', secureDnsServers: [dns] } : { secureDnsMode: 'off' },
@@ -812,6 +847,8 @@ function setupSession() {
     }
     return new Response('Not found', { status: 404 });
   });
+
+  tabSession.protocol.handle('luxres', (req) => standIn(req.url));
 
   tabSession.webRequest.onBeforeSendHeaders((d, cb) => {
     const h = d.requestHeaders;
@@ -871,27 +908,124 @@ function setupSession() {
   });
 }
 
-async function setupBlocker() {
+// What a blocked request is answered with in stealth mode: an empty but successful
+// response, so the page's "did my ad script fail to load?" checks see nothing unusual.
+const STEALTH_REPLY = {
+  script: 'luxres://empty/script',
+  stylesheet: 'luxres://empty/stylesheet',
+  image: 'luxres://empty/image',
+  xhr: 'luxres://empty/xhr',
+};
+const EMPTY_BODY = {
+  script: ['text/javascript', ''],
+  stylesheet: ['text/css', ''],
+  image: ['image/gif', Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')],
+  xhr: ['text/plain', ''],
+};
+function standIn(requestUrl) {
+  const u = new URL(requestUrl);
+  let type = 'text/plain';
+  let body = '';
+  if (u.host === 'empty') {
+    [type, body] = EMPTY_BODY[u.pathname.slice(1)] || EMPTY_BODY.xhr;
+  } else if (u.host === 'data') {
+    // a stub script from the filter lists (fake analytics object etc.), passed as a data: URL
+    const m = /^data:([^,]*?)(;base64)?,(.*)$/s.exec(u.searchParams.get('u') || '');
+    if (m) {
+      type = m[1] || type;
+      body = m[2] ? Buffer.from(m[3], 'base64') : decodeURIComponent(m[3]);
+    }
+  }
+  return new Response(body, {
+    headers: { 'content-type': type, 'access-control-allow-origin': '*', 'cache-control': 'max-age=3600' },
+  });
+}
+const EXTRA_LISTS = [
+  'https://easylist-downloads.adblockplus.org/antiadblockfilters.txt', // anti-adblock walls
+  'https://easylist-downloads.adblockplus.org/advblock.txt', // RU AdList: Russian sites
+];
+const ENGINE_MAX_AGE = 3 * 24 * 3600 * 1000;
+
+function siteAllowed(url) {
+  if (!s.allowSites.length) return false;
   try {
-    const { ElectronBlocker } = require('@ghostery/adblocker-electron');
-    const cache = path.join(dataDir, 'adblock-engine.bin');
-    blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetch, {
-      path: cache,
-      read: fs.readFile,
-      write: fs.writeFile,
-    });
-    blocker.on('request-blocked', (request) => {
-      stats.data.blocked++;
-      stats.save();
-      const tab = tabs.find((t) => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === request.tabId);
-      if (tab) {
-        tab.blocked++;
-        if (tab.id === activeId) push();
+    return s.allowSites.includes(privacy.siteOf(new URL(url).hostname));
+  } catch {
+    return false;
+  }
+}
+
+function installEngine(engine) {
+  if (blocker && blockerOn) blocker.disableBlockingInSession(tabSession);
+  blockerOn = false;
+
+  const match = engine.onBeforeRequest;
+  engine.onBeforeRequest = (details, callback) => {
+    let top = '';
+    try {
+      top = details.webContents ? details.webContents.getURL() : '';
+    } catch {
+      top = '';
+    }
+    if (top && siteAllowed(top)) return callback({});
+    return match(details, (res) => {
+      if (res.redirectURL && res.redirectURL.startsWith('data:')) {
+        return callback({ redirectURL: `luxres://data/?u=${encodeURIComponent(res.redirectURL)}` });
       }
+      const reply = res.cancel && s.stealth ? STEALTH_REPLY[details.resourceType] : null;
+      return callback(reply ? { redirectURL: reply } : res);
     });
-    applySettings();
+  };
+  const cosmetics = engine.onInjectCosmeticFilters;
+  engine.onInjectCosmeticFilters = (event, url, msg) => {
+    let top = url;
+    try {
+      top = event.sender.getURL() || url;
+    } catch {
+      top = url;
+    }
+    return siteAllowed(top) ? undefined : cosmetics(event, url, msg);
+  };
+  engine.on('request-blocked', (request) => {
+    stats.data.blocked++;
+    stats.save();
+    const tab = tabs.find((t) => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === request.tabId);
+    if (tab) {
+      tab.blocked++;
+      if (tab.id === activeId) push();
+    }
+  });
+  blocker = engine;
+  applySettings();
+}
+
+async function buildEngine(ElectronBlocker) {
+  const { adsAndTrackingLists } = require('@ghostery/adblocker');
+  try {
+    return await ElectronBlocker.fromLists(fetch, [...adsAndTrackingLists, ...EXTRA_LISTS]);
+  } catch {
+    return ElectronBlocker.fromLists(fetch, adsAndTrackingLists);
+  }
+}
+
+async function setupBlocker() {
+  const { ElectronBlocker } = require('@ghostery/adblocker-electron');
+  const cache = path.join(dataDir, 'adblock-engine-v2.bin');
+  let age = Infinity;
+  try {
+    installEngine(ElectronBlocker.deserialize(await fs.readFile(cache)));
+    age = Date.now() - (await fs.stat(cache)).mtimeMs;
+  } catch {
+    /* no cache yet, or it was written by another version */
+  }
+  if (age < ENGINE_MAX_AGE) return;
+  // Fresh lists matter here: sites change their ad-block detectors all the time.
+  try {
+    const engine = await buildEngine(ElectronBlocker);
+    await fs.writeFile(cache, engine.serialize());
+    installEngine(engine);
   } catch (err) {
-    console.error('Блокировщик не загрузился (нет сети?):', err.message);
+    console.error('Списки блокировки не обновились (нет сети?):', err.message);
   }
 }
 

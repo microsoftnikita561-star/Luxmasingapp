@@ -380,6 +380,9 @@ async function fillMenu() {
       engines.append(o);
     }
   }
+  $('siterow').hidden = !state.site || !state.settings.blockAds;
+  $('sitelabel').textContent = `Не блокировать на ${state.site}`;
+  $('siteoff').checked = !!state.siteAllowed;
   for (const input of document.querySelectorAll('[data-key]')) {
     const v = state.settings[input.dataset.key];
     if (input.type === 'checkbox') input.checked = !!v;
@@ -396,6 +399,7 @@ for (const input of document.querySelectorAll('[data-key]')) {
     lux.send('set', input.dataset.key, v);
   });
 }
+$('siteoff').addEventListener('change', () => lux.send('toggle-site'));
 const command = (id, fn) => {
   $(id).onclick = () => {
     toggleMenu(false);
