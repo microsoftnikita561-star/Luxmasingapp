@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src * data:; style-src 'self'; script-src 'self'">
+  <title>LuxBrowser</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div id="bar">
+    <div id="tabstrip">
+      <div id="tabs"></div>
+      <button id="newtab" class="icon" title="Новая вкладка (Ctrl+T)"></button>
+    </div>
+    <div id="toolbar">
+      <button id="back" class="icon" title="Назад (Alt+←)"></button>
+      <button id="forward" class="icon" title="Вперёд (Alt+→)"></button>
+      <button id="reload" class="icon" title="Обновить (F5)"></button>
+      <form id="omnibox">
+        <span id="lock" class="icon small"></span>
+        <input id="address" spellcheck="false" autocomplete="off" placeholder="Поиск или адрес сайта">
+        <button type="button" id="star" class="icon small" title="В закладки (Ctrl+D)"></button>
+      </form>
+      <button id="shield" title="Заблокировано на этой странице"><span class="icon small"></span><b id="blocked">0</b></button>
+      <button id="menubtn" class="icon" title="Меню"></button>
+    </div>
+  </div>
+  <div id="suggest" hidden></div>
+  <div id="menu" hidden>
+    <div class="stats">
+      <div><b id="m-mem">—</b><span>памяти занято</span></div>
+      <div><b id="m-tabs">—</b><span>вкладок / спят</span></div>
+      <div><b id="m-blocked">—</b><span>трекеров и рекламы отбито</span></div>
+    </div>
+    <button class="row" id="sleepall">Усыпить фоновые вкладки сейчас</button>
+    <h4>Память</h4>
+    <label class="row">Усыплять фоновые вкладки через
+      <select data-key="sleepMinutes" data-num>
+        <option value="2">2 мин</option><option value="5">5 мин</option><option value="10">10 мин</option>
+        <option value="30">30 мин</option><option value="60">1 час</option><option value="0">никогда</option>
+      </select>
+    </label>
+    <label class="row"><input type="checkbox" data-key="ecoMode"> Режим экономии: меньше процессов (после перезапуска)</label>
+    <h4>Приватность</h4>
+    <label class="row"><input type="checkbox" data-key="blockAds"> Блокировать рекламу и трекеры</label>
+    <label class="row"><input type="checkbox" data-key="blockThirdPartyCookies"> Не отдавать куки сторонним сайтам</label>
+    <label class="row"><input type="checkbox" data-key="stripParams"> Вырезать метки слежки из ссылок (utm, fbclid…)</label>
+    <label class="row"><input type="checkbox" data-key="sendDnt"> Сигнал «Не отслеживать» (DNT + GPC)</label>
+    <label class="row"><input type="checkbox" data-key="saveHistory"> Сохранять историю (только на этом компьютере)</label>
+    <label class="row"><input type="checkbox" data-key="clearOnExit"> Стирать куки, кэш и историю при выходе</label>
+    <label class="row"><input type="checkbox" data-key="restoreTabs"> Восстанавливать вкладки при запуске</label>
+    <label class="row">Защищённый DNS
+      <select data-key="secureDns">
+        <option value="cloudflare">Cloudflare</option><option value="quad9">Quad9</option>
+        <option value="adguard">AdGuard (режет рекламу)</option><option value="off">выкл.</option>
+      </select>
+    </label>
+    <label class="row">Поисковик <select data-key="search" id="engines"></select></label>
+    <button class="row danger" id="clear">Стереть все данные сайтов и историю</button>
+  </div>
+  <script src="ui.js"></script>
+</body>
+</html>

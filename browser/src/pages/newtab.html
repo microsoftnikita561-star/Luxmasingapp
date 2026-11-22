@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <title>Новая вкладка</title>
+  <style>
+    :root { --bg: #1b1c20; --card: #26272c; --text: #e9e9ee; --muted: #9a9ba5; --accent: #8b7cff; --good: #4fd18b; color-scheme: dark; }
+    @media (prefers-color-scheme: light) {
+      :root { --bg: #f4f5f7; --card: #ffffff; --text: #1d1e22; --muted: #686a73; --accent: #5b47f5; --good: #138a4a; color-scheme: light; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 12vh 16px 40px; }
+    h1 { margin: 0 0 22px; font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
+    h1 span { color: var(--accent); }
+    form { width: min(600px, 100%); }
+    input { width: 100%; height: 48px; border-radius: 24px; border: 1px solid transparent; background: var(--card); color: var(--text); padding: 0 22px; font: inherit; font-size: 16px; outline: 0; box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+    input:focus { border-color: var(--accent); }
+    .stat { margin-top: 18px; color: var(--muted); font-size: 13px; }
+    .stat b { color: var(--good); }
+    .grid { margin-top: 34px; width: min(760px, 100%); display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+    .grid a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px; border-radius: 12px; background: var(--card); color: var(--text); text-decoration: none; min-width: 0; }
+    .grid a:hover { outline: 2px solid var(--accent); }
+    .grid .l { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 18px; color: #fff; }
+    .grid .n { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hint { margin-top: 30px; color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Lux<span>Browser</span></h1>
+  <form id="f"><input id="q" placeholder="Поиск" autocomplete="off"></form>
+  <div class="stat" id="stat"></div>
+  <div class="grid" id="grid"></div>
+  <div class="hint" id="hint">Добавляйте сайты в закладки звёздочкой в адресной строке (Ctrl+D) — они появятся здесь.</div>
+  <script>
+    let searchUrl = 'https://duckduckgo.com/?q=%s';
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('q').value.trim();
+      if (q) location.href = searchUrl.replace('%s', encodeURIComponent(q));
+    });
+    window.renderLux = (data) => {
+      searchUrl = data.searchUrl;
+      document.getElementById('q').placeholder = 'Поиск в ' + data.engine;
+      const stat = document.getElementById('stat');
+      stat.textContent = '';
+      if (data.blockedTotal) {
+        stat.append('Уже заблокировано рекламы и трекеров: ');
+        const b = document.createElement('b');
+        b.textContent = data.blockedTotal.toLocaleString('ru-RU');
+        stat.append(b);
+      }
+      const grid = document.getElementById('grid');
+      grid.textContent = '';
+      for (const bm of data.bookmarks) {
+        let host = bm.url;
+        try { host = new URL(bm.url).hostname.replace(/^www\./, ''); } catch {}
+        const a = document.createElement('a');
+        a.href = bm.url;
+        a.title = bm.title;
+        const l = document.createElement('div');
+        l.className = 'l';
+        l.textContent = (host[0] || '?').toUpperCase();
+        let h = 0;
+        for (const c of host) h = (h * 31 + c.charCodeAt(0)) % 360;
+        l.style.background = 'hsl(' + h + ' 55% 48%)';
+        const n = document.createElement('div');
+        n.className = 'n';
+        n.textContent = bm.title || host;
+        a.append(l, n);
+        grid.append(a);
+      }
+      document.getElementById('hint').hidden = data.bookmarks.length > 0;
+    };
+  </script>
+</body>
+</html>
