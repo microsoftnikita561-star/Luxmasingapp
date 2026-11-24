@@ -89,6 +89,9 @@ canvas#game { position: fixed; left: 0; top: 0; image-rendering: pixelated; imag
 .pw u { display: block; width: 44px; height: 5px; background: #6b5560; }
 .pw u i { display: block; height: 100%; background: var(--green); }
 #pauseBtn { position: absolute; right: 10px; top: max(64px, calc(env(safe-area-inset-top) + 56px)); pointer-events: auto; }
+#fireBtn { position: absolute; right: 18px; bottom: max(26px, calc(env(safe-area-inset-bottom) + 14px)); width: 76px; height: 76px; font-size: 26px; padding: 0; pointer-events: auto; opacity: .88; touch-action: none; }
+@media (hover: hover) and (pointer: fine) { #fireBtn { width: 52px; height: 52px; font-size: 18px; } }
+#ammo { position: absolute; right: 14px; bottom: max(118px, calc(env(safe-area-inset-bottom) + 106px)); font-size: 9px; color: #7fe3ff; letter-spacing: 1px; }
 #toast {
   position: fixed; left: 50%; bottom: 16%; transform: translateX(-50%); pointer-events: none; width: max-content; max-width: 92vw;
   background: var(--gold); color: var(--ink); padding: 10px 14px; font-size: 10px; text-align: center;
@@ -146,6 +149,8 @@ canvas#game { position: fixed; left: 0; top: 0; image-rendering: pixelated; imag
   <div id="comboBox" class="hidden"><div id="mult" class="t">x1</div><div id="comboBar"><i></i></div></div>
   <div id="powers"></div>
   <button id="pauseBtn" class="btn small gray">II</button>
+  <div id="ammo" class="t"></div>
+  <button id="fireBtn" class="btn blue">❄</button>
 </div>
 
 <div id="menu" class="screen">
@@ -157,10 +162,11 @@ canvas#game { position: fixed; left: 0; top: 0; image-rendering: pixelated; imag
     <button id="shopBtn" class="btn blue">Гардероб</button>
     <button id="eggsBtn" class="btn">Пасхалки <span id="eggCount"></span></button>
     <button id="muteBtn" class="btn gray">♪</button>
+    <button id="bloodBtn" class="btn gray"></button>
   </div>
   <div id="menuStats"></div>
   <div id="menuMissions" class="panel"></div>
-  <div class="hint">← → / A D / палец — рулить · трамплин — сальто</div>
+  <div class="hint">← → / A D / палец — рулить · пробел / ❄ — снежки · трамплин — сальто</div>
 </div>
 
 <div id="shop" class="screen dim hidden">
