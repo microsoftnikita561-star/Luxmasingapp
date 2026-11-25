@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReverseLab — Guide</title>
+<style>
+  :root{
+    --bg0:#0a0d1c; --bg1:#11142c;
+    --txt:#eaecf5; --muted:#96a0c4; --faint:#69728f;
+    --violet:#7c5cff; --cyan:#22d3ee; --pink:#f472b6;
+    --ok:#34d399; --bad:#f87171; --warn:#fbbf24; --orange:#fb923c;
+    --glass:rgba(255,255,255,.055); --glass2:rgba(255,255,255,.085);
+    --stroke:rgba(255,255,255,.14); --stroke2:rgba(255,255,255,.22);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    color:var(--txt); background:var(--bg1); min-height:100vh; line-height:1.55;
+    background:
+      radial-gradient(640px 420px at 18% 12%, rgba(124,92,255,.33), transparent 60%),
+      radial-gradient(720px 480px at 86% 20%, rgba(34,211,238,.22), transparent 60%),
+      radial-gradient(760px 520px at 60% 100%, rgba(244,114,182,.18), transparent 60%),
+      linear-gradient(180deg,var(--bg0),var(--bg1));
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:48px 20px 80px}
+  .brand{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;
+    background:linear-gradient(135deg,var(--violet),var(--cyan));box-shadow:0 8px 30px rgba(124,92,255,.5)}
+  h1{font-size:44px;margin:0;font-weight:800;letter-spacing:-.5px;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);font-size:16px;max-width:720px;margin:10px 0 0}
+  .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;border-radius:999px;font-size:12.5px;font-weight:700;
+    background:var(--glass);border:1px solid var(--stroke)}
+  .ethics{margin:26px 0 8px;padding:16px 18px;border-radius:16px;
+    background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);color:#ffe9b0;font-size:14px}
+  .ethics b{color:var(--warn)}
+
+  .card{position:relative;margin:22px 0;padding:26px;border-radius:22px;overflow:hidden;
+    background:var(--glass);border:1px solid var(--stroke);
+    box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
+    backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%)}
+  .card::before{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.10),transparent 42%)}
+  .chead{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+  .badge{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#fff;flex:none}
+  .ctitle{font-size:22px;font-weight:800;margin:0}
+  .chip{font-size:11px;font-weight:800;letter-spacing:.5px;padding:3px 10px;border-radius:999px;margin-left:8px;vertical-align:middle}
+  .cdesc{color:var(--muted);margin:4px 0 0;font-size:14.5px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .box{background:rgba(255,255,255,.04);border:1px solid var(--stroke);border-radius:14px;padding:14px 16px}
+  .box h4{margin:0 0 8px;font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--cyan)}
+  .box ol,.box ul{margin:0;padding-left:18px}
+  .box li{margin:5px 0;font-size:14px;color:#d7dcf0}
+  code{font-family:"Cascadia Code",Consolas,"SF Mono",monospace;background:rgba(0,0,0,.35);
+    padding:2px 7px;border-radius:7px;font-size:12.5px;color:#c9d4ff;border:1px solid rgba(255,255,255,.08)}
+  .tools{font-size:13px;color:var(--faint);margin-top:14px}
+  .tools b{color:var(--muted)}
+
+  /* liquid-glass spoiler */
+  .spoiler{margin-top:16px;position:relative;border-radius:14px;overflow:hidden;cursor:pointer;
+    border:1px solid var(--stroke2);background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(34,211,238,.10))}
+  .spoiler .lbl{display:flex;align-items:center;gap:10px;padding:13px 16px;font-weight:700;font-size:13.5px;color:#d7dcf0}
+  .spoiler .lbl .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
+  .spoiler .reveal{max-height:0;transition:max-height .35s ease;padding:0 16px}
+  .spoiler .reveal .inner{padding:0 0 16px;filter:blur(7px);transition:filter .3s ease}
+  .spoiler.open .reveal{max-height:420px}
+  .spoiler.open .reveal .inner{filter:none}
+  .spoiler .reveal code{display:inline-block;margin:3px 0}
+  .kv{font-size:14px;color:#d7dcf0;margin:6px 0}
+  .kv b{color:var(--ok)}
+  .hintbar{font-size:12px;color:var(--faint);padding:0 16px 12px}
+  .foot{margin-top:40px;color:var(--faint);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="logo">◈</div>
+    <div>
+      <h1>ReverseLab</h1>
+    </div>
+  </div>
+  <p class="sub">Тренажёр по реверс-инжинирингу. Пять самостоятельных crackme-мишеней с нарастающей защитой —
+  от «приложения из тиктока» до защищённого чит-лоадера. Открывай каждый <code>.exe</code> в IDA / x64dbg,
+  разбирай защиту и доставай ключ. Решения ниже спрятаны — открывай, только если застрял.</p>
+
+  <div style="margin-top:14px"><span class="pill">🎯 5 уровней</span>
+    <span class="pill" style="margin-left:8px">🧰 IDA · x64dbg · HxD</span>
+    <span class="pill" style="margin-left:8px">🔑 кейгены включены</span></div>
+
+  <div class="ethics">⚠️ <b>Только для обучения.</b> Все мишени входят в комплект и принадлежат тебе —
+  это и есть смысл crackme. Навыки применяй законно: к собственным сборкам, CTF и авторизованному аудиту,
+  не к чужому коммерческому ПО.</div>
+
+  <!-- setup -->
+  <div class="card">
+    <div class="chead"><div class="badge" style="background:linear-gradient(135deg,#64748b,#334155)">⚙</div>
+      <div><p class="ctitle">Подготовка инструментов</p>
+      <p class="cdesc">Минимальный набор реверсера под Windows x64.</p></div></div>
+    <div class="grid">
+      <div class="box"><h4>Статический анализ</h4><ul>
+        <li><b>IDA Free/Pro</b> — дизассемблер + декомпилятор (F5)</li>
+        <li><b>Strings</b> в IDA: <code>Shift+F12</code></li>
+        <li><b>Ghidra</b> — бесплатная альтернатива с декомпилятором</li>
+        <li><code>strings.exe</code> / <code>PE-bear</code> — быстрый осмотр</li></ul></div>
+      <div class="box"><h4>Динамический анализ</h4><ul>
+        <li><b>x64dbg</b> — отладчик (ставь брейк на сравнение)</li>
+        <li><b>ScyllaHide</b> — плагин против анти-отладки (L4, L5)</li>
+        <li><b>HxD</b> — hex-редактор для патчей на диске</li>
+        <li>Запускай мишени в ВМ/песочнице по привычке</li></ul></div>
+    </div>
+    <p class="tools"><b>Поток работы:</b> <code>strings</code> → найти интересное → xref к проверке →
+    понять логику в декомпиляторе → решить (ввести ключ / написать кейген / пропатчить переход).</p>
+  </div>
+
+  <!-- L1 -->
+  <div class="card">
+    <div class="chead"><div class="badge" style="background:linear-gradient(135deg,#34d399,#7c5cff)">1</div>
+      <div><p class="ctitle">QuickReels Pro<span class="chip" style="background:rgba(52,211,153,.18);color:#34d399">NOVICE</span></p>
+      <p class="cdesc">«Приложение из тиктока». Ключ лежит открытым текстом и сравнивается напрямую.</p></div></div>
+    <div class="grid">
+      <div class="box"><h4>Чему учит</h4><ul>
+        <li>Поиск строк и перекрёстных ссылок</li>
+        <li>Чтение секции <code>.rdata</code></li>
+        <li>Базовый статический анализ</li></ul></div>
+      <div class="box"><h4>Как подойти</h4><ol>
+        <li>Открой <code>ch1_quickreels.exe</code> в IDA</li>
+        <li><code>Shift+F12</code> → ищи строку похожую на лицензию</li>
+        <li>Двойной клик → <code>x</code> (xref) → к функции сравнения</li>
+        <li>Ключ прямо там. Введи его.</li></ol></div>
+    </div>
+    <div class="tools"><b>Инструменты:</b> IDA / strings</div>
+    <div class="spoiler" onclick="this.classList.toggle('open')">
+      <div class="lbl"><span class="dot"></span>Показать решение · нажми</div>
+      <div class="reveal"><div class="inner">
+        <div class="kv">Ключ: <b>QR-2024-PRO-ACCESS</b></div>
+        <div class="kv">Строка видна в <code>strings</code> дампе — защиты фактически нет. Патч не нужен.</div>
+      </div></div>
+      <div class="hintbar">Подсказка без спойлера: <code>strings ch1_quickreels.exe | findstr QR</code></div>
+    </div>
+  </div>
+
+  <!-- L2 -->
+  <div class="card">
+    <div class="chead"><div class="badge" style="background:linear-gradient(135deg,#22d3ee,#7c5cff)">2</div>
+      <div><p class="ctitle">PhotoGlow Pro<span class="chip" style="background:rgba(34,211,238,.18);color:#22d3ee">EASY</span></p>
+      <p class="cdesc">Ключа в открытом виде нет: он хранится в XOR-кодировке и расшифровывается в буфер перед сравнением.</p></div></div>
+    <div class="grid">
+      <div class="box"><h4>Чему учит</h4><ul>
+        <li>Снятие простой XOR-обфускации</li>
+        <li>Чтение цикла расшифровки</li>
+        <li>Патч условного перехода <code>jz/jnz</code></li></ul></div>
+      <div class="box"><h4>Как подойти (2 пути)</h4><ol>
+        <li>Найди массив байт в <code>.data</code> + цикл с <code>xor</code></li>
+        <li><b>A:</b> XOR каждого байта с ключом → восстанови строку</li>
+        <li><b>B:</b> найди переход после <code>memcmp</code> и инвертируй/занопь его</li></ol></div>
+    </div>
+    <div class="tools"><b>Инструменты:</b> IDA · x64dbg · HxD · ключ XOR = <code>0x5A</code></div>
+    <div class="spoiler" onclick="this.classList.toggle('open')">
+      <div class="lbl"><span class="dot"></span>Показать решение · нажми</div>
+      <div class="reveal"><div class="inner">
+        <div class="kv">Ключ: <b>GLOW-PRO-7F3A-9C2D</b></div>
+        <div class="kv">XOR-ключ <code>0x5A</code>. Патч: <code>jnz → jz</code> (или <code>nop</code>) сразу после сравнения.</div>
+      </div></div>
+      <div class="hintbar">Байты в бинаре закодированы; расшифровка — простой однобайтовый XOR.</div>
+    </div>
+  </div>
+
+  <!-- L3 -->
+  <div class="card">
+    <div class="chead"><div class="badge" style="background:linear-gradient(135deg,#fbbf24,#fb923c)">3</div>
+      <div><p class="ctitle">VaultDrive<span class="chip" style="background:rgba(251,191,36,.18);color:#fbbf24">MEDIUM</span></p>
+      <p class="cdesc">Keygenme. Ключа нигде нет — серийник вычисляется из имени аккаунта. Нужен кейген.</p></div></div>
+    <div class="grid">
+      <div class="box"><h4>Чему учит</h4><ul>
+        <li>Чтение алгоритма целиком</li>
+        <li>Хеш (djb2) → смешивание → формат</li>
+        <li>Написание кейгена</li></ul></div>
+      <div class="box"><h4>Как подойти</h4><ol>
+        <li>Найди цикл хеша по имени (умножение на 33)</li>
+        <li>Проследи <code>xor</code> с константой и финальный <code>sprintf</code></li>
+        <li>Повтори формулу в своём коде → кейген</li></ol></div>
+    </div>
+    <div class="tools"><b>Инструменты:</b> IDA (F5 декомпилятор) · любой язык для кейгена</div>
+    <div class="spoiler" onclick="this.classList.toggle('open')">
+      <div class="lbl"><span class="dot"></span>Показать решение · нажми</div>
+      <div class="reveal"><div class="inner">
+        <div class="kv">Алгоритм: <code>h=djb2(name); magic=h^0x5A17C0DE;</code></div>
+        <div class="kv"><code>serial="%04X-%04X-%04X" % (magic&gt;&gt;16, magic&amp;0xFFFF, (h*0x1F+len*7)&amp;0xFFFF)</code></div>
+        <div class="kv">Пример: <code>reverser</code> → <b>7075-2D8D-BD45</b>; <code>neo</code> → <b>519F-5499-F4AE</b></div>
+        <div class="kv">Готовый кейген: <code>tools/keygen</code> (или <code>dist/keygen "имя"</code>).</div>
+      </div></div>
+      <div class="hintbar">Серийник регистронезависим. Магия в константе <code>0x5A17C0DE</code>.</div>
+    </div>
+  </div>
+
+  <!-- L4 -->
+  <div class="card">
+    <div class="chead"><div class="badge" style="background:linear-gradient(135deg,#fb923c,#f87171)">4</div>
+      <div><p class="ctitle">SentinelVPN<span class="chip" style="background:rgba(251,146,60,.18);color:#fb923c">HARD</span></p>
+      <p class="cdesc">Анти-отладка + шифрованные строки. Под отладчиком в ключ подмешивается другая константа — верный серийник отклоняется, пока не снимешь анти-отладку.</p></div></div>
+    <div class="grid">
+      <div class="box"><h4>Чему учит</h4><ul>
+        <li>Обход <code>IsDebuggerPresent</code>, PEB.BeingDebugged, NtGlobalFlag</li>
+        <li>Timing-проверки</li>
+        <li>Расшифровка строк в рантайме</li></ul></div>
+      <div class="box"><h4>Как подойти</h4><ol>
+        <li>Запусти <b>без</b> отладчика — обычный серийник сработает</li>
+        <li>Под x64dbg поставь ScyllaHide, обнули <code>BeingDebugged</code></li>
+        <li>Пропатчь <code>IsDebuggerPresent</code> → <code>ret 0</code></li>
+        <li>Найди «настоящую» константу <code>0x1337C0DE</code> vs ложную <code>0xDEADBEEF</code></li></ol></div>
+    </div>
+    <div class="tools"><b>Инструменты:</b> x64dbg + ScyllaHide · IDA · алгоритм — CRC32(имя)</div>
+    <div class="spoiler" onclick="this.classList.toggle('open')">
+      <div class="lbl"><span class="dot"></span>Показать решение · нажми</div>
+      <div class="reveal"><div class="inner">
+        <div class="kv">Константа без отладчика: <code>k=0x1337C0DE</code> (под отладчиком <code>0xDEADBEEF</code> — ложный путь)</div>
+        <div class="kv"><code>m=rotl(crc32(name)^k,7); serial="VPN-%03X-%03X-%02X"%(m&gt;&gt;20&amp;0xFFF, m&gt;&gt;8&amp;0xFFF, m&amp;0xFF)</code></div>
+        <div class="kv">Пример: <code>reverser</code> → <b>VPN-23E-68A-FE</b> (без отладчика)</div>
+        <div class="kv">Кейген тот же: <code>dist/keygen "имя"</code>.</div>
+      </div></div>
+      <div class="hintbar">Если серийник «не тот» под отладчиком — ты поймал анти-отладку. Снимай её.</div>
+    </div>
+  </div>
+
+  <!-- L5 -->
+  <div class="card">
+    <div class="chead"><div class="badge" style="background:linear-gradient(135deg,#7c5cff,#f472b6)">5</div>
+      <div><p class="ctitle">PhantomCheat Loader<span class="chip" style="background:rgba(248,113,113,.18);color:#f87171">EXPERT</span></p>
+      <p class="cdesc">Чит-лоадер с максимальной защитой: байткод-<b>виртуальная машина</b> проверяет ключ, плюс анти-тампер и анти-отладка. Прямого сравнения нет.</p></div></div>
+    <div class="grid">
+      <div class="box"><h4>Чему учит</h4><ul>
+        <li>Девиртуализация VM-протектора (упрощённый VMProtect/Themida)</li>
+        <li>Разбор диспетчера опкодов и таблиц</li>
+        <li>Обход анти-тампера (контрольная сумма в seed)</li></ul></div>
+      <div class="box"><h4>Как подойти</h4><ol>
+        <li>Найди цикл-диспетчер (<code>switch</code> по байтам программы)</li>
+        <li>Разбери опкоды: LDK, +таблица, ^keystream, ROL, +prev, STORE</li>
+        <li>Преобразование обратимо → инвертируй target-блоб = ключ</li>
+        <li>Патчить программу VM бесполезно: сумма уходит в seed</li></ol></div>
+    </div>
+    <div class="tools"><b>Инструменты:</b> IDA + F5 · x64dbg (трассировка VM) · скрипт-инвертор</div>
+    <div class="spoiler" onclick="this.classList.toggle('open')">
+      <div class="lbl"><span class="dot"></span>Показать решение · нажми</div>
+      <div class="reveal"><div class="inner">
+        <div class="kv">Ключ: <b>PH4NTOM-VM-2024-UNLOCK</b></div>
+        <div class="kv">VM на байт: <code>acc=key[i]; acc+=(0x3B+i*7); acc^=KS[i%8]; acc=rol(acc,i%7+1); acc+=prev; out[i]=acc; prev=acc</code></div>
+        <div class="kv">Инверсия (кейген): <code>t=out[i]-prev; t=ror(t,i%7+1); t^=KS[i%8]; t-=(0x3B+i*7); key[i]=t</code></div>
+        <div class="kv">Анти-тампер: <code>seed = SEED ^ (checksum(prog) ^ expected)</code> — патч программы → мусор на выходе.</div>
+      </div></div>
+      <div class="hintbar">Запускай без отладчика (иначе «INTEGRITY CHECK FAILED»). Инвертор — в <code>src/relab_logic.h : l5_invert</code>.</div>
+    </div>
+  </div>
+
+  <div class="foot">ReverseLab · учебный набор crackme · собрано кросс-компиляцией mingw-w64 ·
+  вся логика проверена нативным тестом (<code>dist/logic_test</code>).</div>
+
+</div>
+</body>
+</html>
